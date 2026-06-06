@@ -33,6 +33,7 @@ export default function Home() {
   const [isPinging, setIsPinging] = useState(false);
   
   const bottomRef = useRef(null);
+  const inputRef = useRef(null); // Added ref to track the input box
   const prevMsgCount = useRef(0);
   const clientId = useRef(Math.random().toString(36).substring(7)).current;
 
@@ -139,10 +140,12 @@ export default function Home() {
 
   // --- MASTER AUTO-SCROLL CONTROLLER ---
   const scrollToBottom = () => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    // Added a tiny timeout so the DOM updates before scrolling
+    setTimeout(() => {
+      bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+    }, 50);
   };
 
-  // 1. Scroll when a new message is added
   useEffect(() => {
     if (messages.length > prevMsgCount.current) {
       scrollToBottom();
@@ -150,13 +153,10 @@ export default function Home() {
     prevMsgCount.current = messages.length;
   }, [messages]);
 
-  // 2. Scroll dynamically when the mobile keyboard opens/closes
   useEffect(() => {
     if (appState !== "CHAT") return;
-    
     const handleResize = () => scrollToBottom();
     
-    // visualViewport is the most accurate way to detect Chrome Android keyboard
     if (window.visualViewport) {
       window.visualViewport.addEventListener("resize", handleResize);
       return () => window.visualViewport.removeEventListener("resize", handleResize);
@@ -169,10 +169,15 @@ export default function Home() {
   const sendMessage = async (e) => {
     e.preventDefault();
     if (!input.trim()) return;
+    
     const encryptedText = CryptoJS.AES.encrypt(input, SECRET_KEY).toString();
     setMessages((prev) => [...prev, { id: Date.now(), text: input, sender: "me", time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit'}), createdAt: Date.now() }]);
     setInput("");
     setShowEmojis(false);
+    
+    // Force the input to stay focused so the keyboard doesn't drop
+    inputRef.current?.focus();
+
     await fetch("/api/pusher", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -325,13 +330,20 @@ export default function Home() {
           <form onSubmit={sendMessage} className="flex-1 flex gap-2 items-center">
             <span className="text-[#3fb950] font-bold text-sm select-none">{'>'}</span>
             <input 
+              ref={inputRef} // Attached the ref here
               type="text" value={input} onChange={(e) => setInput(e.target.value)}
-              // Added onFocus to trigger scroll when keyboard starts opening
               onFocus={() => setTimeout(scrollToBottom, 300)}
               className="flex-1 bg-transparent border-none text-[#c9d1d9] text-sm outline-none font-mono focus:ring-0 placeholder-[#484f58] py-2"
-              placeholder="inject command..." autoFocus autoComplete="off"
+              placeholder="inject command..." autoComplete="off"
             />
-            <button type="submit" disabled={!input.trim()} className="p-1.5 text-[#58a6ff] hover:text-white disabled:opacity-50 transition-colors">
+            <button 
+              type="submit" 
+              disabled={!input.trim()} 
+              // Magic trick: Prevent the button from stealing focus when clicked/touched
+              onMouseDown={(e) => e.preventDefault()}
+              onTouchStart={(e) => e.preventDefault()}
+              className="p-1.5 text-[#58a6ff] hover:text-white disabled:opacity-50 transition-colors"
+            >
               <Send size={16} />
             </button>
           </form>
