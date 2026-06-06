@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "189591954137",
+    "project_id": "global-studies-hub-stealth",
+    "storage_bucket": "global-studies-hub-stealth.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:189591954137:android:d0076ed9a42eac0b8114c8",
+        "android_client_info": {
+          "package_name": "com.globalstudies.stealth"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA_yFV1mPKVTKTpUTxILMJIkbi1R22KmDU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

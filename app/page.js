@@ -42,25 +42,26 @@ export default function Home() {
 
   // --- SERVICE WORKER & PUSH SUBSCRIPTION ---
   const registerServiceWorkerAndSubscribe = async (user) => {
-    if ("serviceWorker" in navigator && "PushManager" in window) {
-      try {
-        const registration = await navigator.serviceWorker.register("/sw.js");
-        await navigator.serviceWorker.ready;
-        const subscription = await registration.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey: urlBase64ToUint8Array(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY),
-        });
-        await fetch("/api/subscribe", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ subscription, username: user.name }),
-        });
-        console.log("Push registered for stealth mode.");
-      } catch (err) {
-        console.error("Service Worker registration failed:", err);
-      }
+  // Wrapper ne jo window object me token dala hai, wo yahan se uthao
+  const expoToken = window.EXPO_PUSH_TOKEN;
+
+  if (expoToken) {
+    try {
+      await fetch("/api/subscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        // IMPORTANT: Hum parameter names same rakh rahe hain (subscription & username) 
+        // taaki tere backend /api/subscribe route me koi error na aaye
+        body: JSON.stringify({ subscription: expoToken, username: user.name }),
+      });
+      console.log("Native Expo Push Token saved successfully!");
+    } catch (err) {
+      console.error("Token save failed:", err);
     }
-  };
+  } else {
+    console.log("No Expo Push Token found. Are you running inside the Native Wrapper?");
+  }
+};
 
   // --- THE PANIC BUTTON ---
   useEffect(() => {
