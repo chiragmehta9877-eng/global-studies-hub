@@ -16,13 +16,21 @@ export async function POST(req) {
     const sub = global.pushSubscriptions?.[targetUser];
 
     if (sub) {
+      // THE MAGIC UPDATE LIVES HERE
       await webpush.sendNotification(
         sub,
         JSON.stringify({
           title: "Global Studies Hub",
           body: "New course modules have been added to your syllabus.",
-        })
+        }),
+        {
+          TTL: 86400, // 24 hours tak retry karega
+          headers: {
+            'Urgency': 'high' // Chrome ko deep sleep se uthane ke liye force karega
+          }
+        }
       );
+      
       return NextResponse.json({ success: true, message: "Ping sent." });
     } else {
       return NextResponse.json({ error: "Partner not subscribed yet." }, { status: 404 });
