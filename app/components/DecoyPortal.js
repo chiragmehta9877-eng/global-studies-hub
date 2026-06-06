@@ -1,307 +1,431 @@
-// components/DecoyPortal.js
 "use client";
-import { useState } from "react";
-import { BookOpen, Clock, GraduationCap, LayoutDashboard, FileText, Calendar, Award, Menu } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { motion, AnimatePresence, useScroll, useTransform } from "framer-motion";
+import { Search, GraduationCap, ChevronRight, FileText, X, BookOpen, Beaker, Library, LayoutDashboard, Globe, Shield, Database, Users, Award, Zap, Send, Menu, Cpu, TrendingUp, Compass, Monitor } from "lucide-react";
 
-// --- THE ULTIMATE OVERWHELMING DECOY DATA ---
-const ACADEMIC_DATA = {
-  "TOUR-304": {
-    title: "Sustainable Eco-Tourism & Global Policy Frameworks",
-    prof: "Dr. Alistair Vance, Ph.D.",
-    progress: 68,
-    readTime: "4h 45m",
-    modules: [
-      {
-        title: "Module 1: The Triple Bottom Line & Macro-Environmental Dynamics",
-        content: `The intersection of sustainable practices and global tourism presents a complex paradigm. According to the United Nations World Tourism Organization (UNWTO), sustainable tourism must account for current and future economic, social, and environmental impacts. Elkington's framework requires that tourism enterprises measure their success not just by financial profitability (Profit), but also by their ecological footprint (Planet) and their socio-cultural impact on host communities (People). Furthermore, the implementation of ISO 20121 standards in event management has drastically altered how mega-events are structured globally. Students must review the carbon emission metrics of the aviation sector published in the 2025 Geneva Accords and contrast them with the Kyoto Protocol baseline metrics. The elasticity of tourism demand in response to eco-taxes remains a highly debated topic among neoclassical economists.`
-      },
-      {
-        title: "Module 2: Carrying Capacity Dynamics & The Overtourism Epidemic",
-        content: `Overtourism phenomena in destinations like Venice, Kyoto, and Barcelona highlight the critical threshold of Social Carrying Capacity. When visitor density surpasses this threshold, host community antagonism rises, leading to Doxey's Irridex Model stage of "Antagonism". The economic reliance on tourism often forces local governments into a 'growth paradigm trap', where policies favor short-term capital influx over long-term residential quality of life. The displacement of local populations due to short-term rental platforms (STRs) fundamentally alters the demographic and cultural fabric of heritage sites. Analysis of the Butler Destination Lifecycle suggests that without strict spatial zoning and tourist quotas, destinations inevitably enter the 'Decline' phase, characterized by degraded infrastructure and loss of authentic cultural capital.`
-      },
-      {
-        title: "Module 3: Ecotourism Certification, Auditing, and Greenwashing",
-        content: `A critical examination of eco-labels reveals a fragmented regulatory landscape. The Global Sustainable Tourism Council (GSTC) criteria provide a baseline, yet the proliferation of self-certified 'green' credentials leads to widespread consumer deception, commonly known as greenwashing. Analysis of case studies in the Costa Rican rainforest eco-lodges demonstrates the necessity for third-party auditing mechanisms to ensure true ecological mitigation rather than mere marketing rhetoric. We will explore the qualitative metrics used by the Rainforest Alliance and how they contrast with the more quantitatively rigorous LEED certification for hospitality infrastructure.`
-      },
-      {
-        title: "Module 4: Community-Based Tourism (CBT) and Indigenous Rights",
-        content: `Community-Based Tourism (CBT) flips the traditional top-down development model by placing control and majoritarian economic benefits directly into the hands of local communities. However, the operationalization of CBT faces severe bottlenecks, including lack of access to global distribution systems (GDS) and inadequate hospitality training. Furthermore, the commodification of indigenous rituals for tourist consumption raises severe ethical concerns regarding cultural appropriation. We will dissect the 2018 UN Declaration on the Rights of Indigenous Peoples (UNDRIP) in the context of tourism development in the Amazon basin.`
-      },
-      {
-        title: "Module 5: Climate Change Adaptation in Coastal Tourism",
-        content: `Rising sea levels, increased frequency of extreme weather events, and ocean acidification pose existential threats to coastal and island tourism economies. Small Island Developing States (SIDS) like the Maldives and Fiji are at the forefront of this crisis. The module covers the economic cost-benefit analysis of hard engineering solutions (e.g., seawalls, tetrapods) versus soft engineering (e.g., mangrove restoration, beach nourishment). The concept of 'Last Chance Tourism' (LCT)—where tourists rush to see endangered ecosystems like the Great Barrier Reef before they disappear—creates a paradoxical feedback loop of accelerated environmental degradation.`
-      }
-    ]
-  },
-  "IR-201": {
-    title: "Global Geopolitics, Supply Chains & International Trade",
-    prof: "Prof. Sarah Lin, M.Econ",
-    progress: 42,
-    readTime: "5h 10m",
-    modules: [
-      {
-        title: "Module 1: Multi-polar Hegemony and Neo-Mercantilism",
-        content: `Modern international relations are heavily dictated by bilateral trade agreements and economic corridors. The shift from unipolar to multipolar global hegemony has decentralized supply chains. The strategic positioning of maritime chokepoints—such as the Strait of Malacca, the Suez Canal, and the Strait of Hormuz—remains a primary driver of naval deployment and foreign policy formulations among superpowers. The resurgence of neo-mercantilist policies, characterized by aggressive export subsidies and currency manipulation, threatens the foundational principles of the Bretton Woods institutions.`
-      },
-      {
-        title: "Module 2: The WTO Structural Crisis and Appellate Body Paralysis",
-        content: `The Appellate Body of the World Trade Organization has faced structural crises since 2019, primarily due to the blockage of judge appointments. Students must analyze the case study of cross-border tariff impositions and their cascading effects on emerging economies. The differentiation between tariff barriers and Non-Tariff Barriers (NTBs) such as phytosanitary restrictions, technical quotas, and arbitrary anti-dumping duties often serves as thinly veiled protectionism. We will examine the dispute settlement mechanism (DSM) and its efficacy in the contemporary trade war environment.`
-      },
-      {
-        title: "Module 3: Energy Geopolitics and the Petro-Dollar Transition",
-        content: `The intrinsic link between national security and energy independence cannot be overstated. This module traces the historical dominance of the petro-dollar system and its modern challenges amidst the global push for decarbonization. We will evaluate the geopolitical leverage exercised by OPEC+ nations and the strategic implications of the European Union's Carbon Border Adjustment Mechanism (CBAM). The rare-earth element (REE) supply chain monopoly is also heavily scrutinized as the critical bottleneck for renewable energy transitions.`
-      },
-      {
-        title: "Module 4: Economic Sanctions as an Instrument of Foreign Policy",
-        content: `Economic sanctions represent a coercive tool sitting between diplomatic protest and military intervention. By analyzing primary source documents from the US Treasury’s Office of Foreign Assets Control (OFAC), we will evaluate the macroeconomic crippling effect of SWIFT exclusions and secondary sanctions. The module will critically assess the 'rally 'round the flag' effect, where targeted regimes successfully weaponize sanctions to consolidate domestic power, thereby neutralizing the intended policy behavioral changes.`
-      },
-      {
-        title: "Module 5: Digital Trade, Data Localization, and Cyber Sovereignty",
-        content: `As the global economy digitizes, cross-border data flows have become the new frontier of international trade negotiations. The conflict between the US model of free data flow, the EU's GDPR privacy-first model, and the strict data localization and censorship laws under models of Cyber Sovereignty creates a highly fragmented digital landscape. We will dissect the implications of these competing frameworks on multinational enterprise operations and global cloud infrastructure.`
-      }
-    ]
-  },
-  "CUL-105": {
-    title: "Heritage Conservation, Urban Sociology & Museum Studies",
-    prof: "Dr. Rajiv Menon, D.Phil",
-    progress: 85,
-    readTime: "3h 15m",
-    modules: [
-      {
-        title: "Module 1: The 1972 UNESCO Convention and Outstanding Universal Value",
-        content: `Cultural heritage management involves the ongoing preservation of tangible and intangible cultural assets. The 1972 UNESCO World Heritage Convention remains the primary legislative framework globally. However, the designation of 'Outstanding Universal Value' (OUV) often forces a static preservation model that conflicts with the dynamic, lived realities of local indigenous populations. We will critique the Eurocentric biases in historical preservation criteria and the systemic underrepresentation of global south narratives in the World Heritage List.`
-      },
-      {
-        title: "Module 2: Museumification of Urban Centers and Gentrification",
-        content: `A core debate in urban sociology is the 'museumification' of historical city centers. When urban regeneration policies focus exclusively on aesthetic preservation for tourist consumption, the area loses its organic functionality. This gentrification displaces traditional artisans and intangible cultural practices, replacing them with homogenised souvenir commerce. Students will conduct a longitudinal spatial analysis of property values in historic districts to map the correlation between heritage designation and residential displacement.`
-      },
-      {
-        title: "Module 3: Repatriation of Antiquities and De-colonizing Museums",
-        content: `The modern museum institution is inherently tied to 19th-century colonial expansion and the controversial acquisition of ethnographic artifacts. This module tackles the legal, ethical, and logistical complexities surrounding the repatriation of cultural property. Through case studies such as the Elgin Marbles and the Benin Bronzes, we will analyze the tension between the 'universal museum' argument, which advocates for encyclopedic collections in major global hubs, versus nationalistic claims of origin and cultural restitution.`
-      },
-      {
-        title: "Module 4: Dark Tourism and the Commodification of Trauma",
-        content: `Thanatourism, or 'Dark Tourism', involves travel to sites historically associated with death, tragedy, and suffering (e.g., Auschwitz, Chernobyl, Ground Zero). This module explores the psychological motivations of dark tourists and the ethical tightrope destination managers walk between education, memorialization, and sheer voyeuristic commodification. We will assess the design of memorial spaces and the narrative frameworks used to interpret historical trauma.`
-      },
-      {
-        title: "Module 5: Intangible Cultural Heritage (ICH) and Globalization",
-        content: `Unlike physical monuments, Intangible Cultural Heritage—encompassing oral traditions, performing arts, social practices, and traditional craftsmanship—is fragile and relies entirely on human transmission. The 2003 UNESCO Convention for the Safeguarding of the Intangible Cultural Heritage attempts to catalogue these practices. However, globalization and the digital homogenization of youth culture pose severe risks to ICH transmission. We will study the interventions required to make traditional practices economically viable without degrading their authenticity.`
-      }
-    ]
-  },
-  "ECO-402": {
-    title: "Advanced Macroeconomic Theories in Hospitality & Service Sectors",
-    prof: "Dr. Elena Rostova",
-    progress: 12,
-    readTime: "7h 30m",
-    modules: [
-      {
-        title: "Module 1: Yield Management Mathematics and Bayesian Probability",
-        content: `Advanced yield management requires a profound understanding of price elasticity of demand within perishable inventory sectors. The mathematical modeling of dynamic pricing algorithms involves Bayesian probability and historical booking curve analysis. Students are required to compute the optimal overbooking ratios using the marginal cost of walked guests versus the marginal revenue of a captured booking. Complex stochastic models are utilized to predict cancellation behaviors across different market segments.`
-      },
-      {
-        title: "Module 2: Game Theory in Oligopolistic Market Structures",
-        content: `The airline and global hotel chain industries operate under strict oligopolistic conditions. Using the Nash Equilibrium and the Prisoner’s Dilemma frameworks, we will analyze predatory pricing strategies, cartel formations, and implicit collusion mechanisms. Students will construct payoff matrices to predict competitor responses to sudden capacity expansions or aggressive promotional dumping in localized markets.`
-      },
-      {
-        title: "Module 3: Currency Fluctuations and Hedging Strategies",
-        content: `For transnational service operators, foreign exchange (Forex) volatility represents a massive operational risk. This module dives into the mechanics of forward contracts, currency options, and natural hedging. We will mathematically derive the impact of a 15% depreciation in the domestic currency against the US Dollar on the cost of goods sold (COGS) for an import-reliant hospitality enterprise operating in an emerging market.`
-      },
-      {
-        title: "Module 4: Labor Economics and the Gig Economy Paradigm",
-        content: `The service sector is notoriously labor-intensive. This module explores the macroeconomic shift towards precarious employment models, zero-hour contracts, and the "Uberization" of the workforce. We will analyze the impact of minimum wage legislation shifts on overall employment levels using monopsony labor market models. The discussion will also cover the long-term productivity impacts of high turnover rates in the hospitality industry.`
-      },
-      {
-        title: "Module 5: Investment Appraisal and Capital Budgeting Risk",
-        content: `Assessing the financial viability of multi-million dollar infrastructure projects requires advanced capital budgeting techniques beyond basic NPV and IRR calculations. We will incorporate real options valuation to account for managerial flexibility in highly uncertain economic climates. Students will run Monte Carlo simulations to assess the risk profile of developing luxury resorts in politically unstable regions with high sovereign risk premiums.`
-      }
-    ]
-  },
-  "SOC-505": {
-    title: "Sociology of Urban Migration and Demographic Shifts",
-    prof: "Dr. Hassan Al-Fayed",
-    progress: 5,
-    readTime: "8h 20m",
-    modules: [
-      {
-        title: "Module 1: Push-Pull Factors and Neoclassical Migration Theory",
-        content: `Migration is rarely a monolithic event; it is driven by complex matrices of push and pull factors. From a neoclassical macroeconomic perspective, migration is simply the geographic reallocation of labor from capital-poor, labor-rich regions to capital-rich, labor-scarce regions. However, this model fails to account for structural barriers and immigration policies. We will critique the simplistic assumptions of the Harris-Todaro model in the context of contemporary rural-to-urban migration in Sub-Saharan Africa.`
-      },
-      {
-        title: "Module 2: Remittances and the Developmental Paradox",
-        content: `Global remittances often exceed foreign direct investment (FDI) and official development assistance (ODA) in developing nations. While these financial inflows reduce immediate poverty at the household level, they can also trigger a "Dutch Disease" effect—appreciating the local currency and hurting export competitiveness. We will analyze the socioeconomic reliance on remittances and whether they stimulate actual capital investment or merely fuel hyper-consumption of imported goods.`
-      },
-      {
-        title: "Module 3: Transnationalism and Diasporic Identity Formation",
-        content: `The concept of the nation-state is increasingly challenged by transnational communities who maintain dense social, economic, and political networks across borders. This module examines the role of digital communication technologies in sustaining diasporic identities. We will explore the sociological concept of 'social remittances'—the transfer of ideas, behaviors, and social capital from host to sending countries, which can drastically alter local gender norms and political expectations.`
-      },
-      {
-        title: "Module 4: Urban Sprawl, Slum Upgrading, and Spatial Inequality",
-        content: `The rapid influx of migrants into megacities often outpaces urban planning, resulting in the proliferation of informal settlements or slums. We will evaluate the sociological impact of spatial segregation, where affluent gated communities exist adjacent to impoverished, under-serviced neighborhoods. The module will critically assess policy interventions ranging from aggressive slum clearance and relocation to participatory in-situ slum upgrading programs supported by NGOs.`
-      },
-      {
-        title: "Module 5: Climate-Induced Migration and Legal Frameworks",
-        content: `As global temperatures rise, the phenomenon of the 'climate refugee' has emerged as a critical global challenge. However, current international law, specifically the 1951 Refugee Convention, does not formally recognize environmental degradation as a valid criteria for refugee status. This module explores the sociological and legal black hole faced by populations displaced by desertification, extreme flooding, and chronic drought, predicting future demographic pressures on global northern borders.`
-      }
-    ]
-  }
-};
+export default function ModernDecoy({ onTrigger }) {
+  const [query, setQuery] = useState("");
+  const [studyData, setStudyData] = useState([]);
+  const [triggerWord, setTriggerWord] = useState("");
+  const [selectedReport, setSelectedReport] = useState(null);
+  const [activeTab, setActiveTab] = useState("home"); 
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-export default function DecoyPortal({ onTriggerLogin }) {
-  const [activeCourse, setActiveCourse] = useState("TOUR-304");
-  const [activeModuleIndex, setActiveModuleIndex] = useState(0);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  // Contact Form State
+  const [contactForm, setContactForm] = useState({ name: "", email: "", message: "" });
+  const [isSending, setIsSending] = useState(false);
+
+  // Parallax Scroll Setup
+  const { scrollY } = useScroll();
+  const y1 = useTransform(scrollY, [0, 1000], [0, 300]);
+  const y2 = useTransform(scrollY, [0, 1000], [0, -200]);
+  const opacityHero = useTransform(scrollY, [0, 400], [1, 0]);
+
+  // DOUBLE-COUNT FIX: React StrictMode runs useEffect twice. This ref stops it.
+  const hasInitialized = useRef(false);
+
+  useEffect(() => {
+    if (!hasInitialized.current) {
+      fetchContent();
+      fetchSettings();
+      trackEvent("VIEW_TAB", "home"); // Initial page load tracked only once
+      hasInitialized.current = true;
+    }
+  }, []);
+
+  // --- ANALYTICS TRACKING ENGINE ---
+  const trackEvent = async (actionType, details = "") => {
+    try {
+      await fetch("/api/analytics", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ actionType, details })
+      });
+    } catch(e) { console.error("Tracking failed"); }
+  };
+
+  const handleTabChange = (tabId) => {
+    setActiveTab(tabId);
+    trackEvent("VIEW_TAB", tabId);
+    setIsMobileMenuOpen(false); // Close mobile sidebar after clicking a tab
+  };
+
+  const fetchContent = async () => {
+    const res = await fetch("/api/admin/content");
+    const data = await res.json();
+    if (data.success) setStudyData(data.items);
+  };
+
+  const fetchSettings = async () => {
+    const res = await fetch("/api/settings");
+    const data = await res.json();
+    if (data.success) setTriggerWord(data.triggerWord);
+  };
 
   const handleSearch = (e) => {
     e.preventDefault();
-    if (searchQuery === "TOUR-404-LIVE") {
-      onTriggerLogin();
+    trackEvent("SEARCH", query); // Track Search
+
+    const activeTrigger = triggerWord ? triggerWord.trim().toUpperCase() : "TOUR-404-LIVE";
+    const userQuery = query.trim().toUpperCase();
+
+    if (userQuery === activeTrigger) {
+      setQuery(""); 
+      onTrigger(); 
     } else {
-      alert(`Search Results: No new academic modules found for "${searchQuery}". Please check your syllabus or contact the central registry.`);
+      alert("Searching global archives for: " + query);
+      setQuery(""); 
     }
-    setSearchQuery("");
   };
 
+  const handleContactSubmit = async (e) => {
+    e.preventDefault();
+    setIsSending(true);
+    try {
+      await fetch("/api/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(contactForm)
+      });
+      alert('Enquiry submitted successfully.'); // Normal Message
+      setContactForm({ name: "", email: "", message: "" });
+    } catch(err) {
+      alert("Error sending message.");
+    }
+    setIsSending(false);
+  };
+
+  const openReport = (item) => {
+    setSelectedReport(item);
+    trackEvent("VIEW_REPORT", item.title); // Track Report View
+  };
+
+  const getFilteredData = () => {
+    if (activeTab === "home") return studyData.slice(0, 3);
+    if (activeTab === "research") return studyData.filter(item => item.category?.toLowerCase().includes("research") || item.category?.toLowerCase().includes("journal"));
+    if (activeTab === "courses") return studyData.filter(item => item.category?.toLowerCase().includes("course") || item.category?.toLowerCase().includes("module"));
+    if (activeTab === "library") return studyData.filter(item => item.category?.toLowerCase().includes("library") || item.category?.toLowerCase().includes("book"));
+    return studyData;
+  };
+
+  const filteredData = getFilteredData();
+
   return (
-    <div className="flex flex-col h-screen bg-slate-50 font-sans overflow-hidden text-slate-800">
+    <div className="min-h-screen bg-[#fafbfc] text-slate-900 font-sans selection:bg-indigo-100 overflow-x-hidden">
       
-      {/* HEADER */}
-      <header className="h-16 px-6 bg-[#0f172a] text-white flex justify-between items-center shadow-md z-20 shrink-0">
-        <div className="flex items-center gap-4">
-          <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="md:hidden text-slate-300 hover:text-white transition-colors">
-            <Menu />
-          </button>
-          <h1 className="text-lg md:text-xl font-bold flex items-center gap-2">
-            <GraduationCap className="text-blue-400" /> Global Studies Hub
-          </h1>
-        </div>
-        <form onSubmit={handleSearch} className="relative w-48 md:w-64">
-          <input 
-            type="text" 
-            placeholder="Search catalog... (e.g. TOUR-101)" 
-            className="w-full px-4 py-1.5 rounded-full bg-slate-800 border border-slate-700 text-sm text-white focus:outline-none focus:border-blue-500 transition-colors" 
-            value={searchQuery} 
-            onChange={(e) => setSearchQuery(e.target.value)} 
-          />
-        </form>
-      </header>
-
-      <div className="flex flex-1 overflow-hidden">
-        
-        {/* SIDEBAR */}
-        <aside className={`${isSidebarOpen ? 'flex' : 'hidden'} md:flex flex-col w-64 bg-white border-r border-slate-200 shadow-sm z-10 shrink-0`}>
-          <div className="p-6 border-b border-slate-100">
-            <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Session ID</p>
-            <p className="text-sm font-semibold text-slate-700">Guest / Public Access</p>
-            <p className="text-[10px] text-slate-400 mt-1">Read-only Permissions Active</p>
+      {/* NAVBAR */}
+      <nav className="border-b border-slate-200/60 py-4 px-6 md:px-8 flex justify-between items-center sticky top-0 bg-white/80 backdrop-blur-xl z-50 transition-all">
+        <div onClick={() => handleTabChange("home")} className="flex items-center gap-2 cursor-pointer group">
+          <div className="bg-gradient-to-tr from-indigo-600 to-violet-500 p-1.5 rounded-lg text-white shadow-lg shadow-indigo-500/20 group-hover:rotate-12 transition-transform">
+            <GraduationCap size={20} />
           </div>
-          <nav className="flex-1 px-4 py-4 space-y-1 overflow-y-auto scrollbar-hide">
-            <button className="w-full flex items-center gap-3 px-3 py-2 text-sm text-slate-600 rounded-lg hover:bg-slate-50 transition-colors">
-              <LayoutDashboard size={18} /> Directory Home
+          <span className="font-bold tracking-tight text-slate-800 text-lg md:text-xl">Global Studies Archive</span>
+        </div>
+        
+        {/* DESKTOP TABS */}
+        <div className="hidden md:flex gap-8 text-sm font-semibold text-slate-500">
+          {[
+            { id: "research", label: "Research", icon: <Beaker size={16}/> },
+            { id: "courses", label: "Courses", icon: <BookOpen size={16}/> },
+            { id: "library", label: "Library", icon: <Library size={16}/> }
+          ].map((navItem) => (
+            <button 
+              key={navItem.id}
+              onClick={() => handleTabChange(navItem.id)}
+              className={`relative flex items-center gap-2 transition-all duration-300 ${activeTab === navItem.id ? "text-indigo-600 drop-shadow-sm" : "hover:text-indigo-500"}`}
+            >
+              {navItem.icon} {navItem.label}
+              {activeTab === navItem.id && <motion.div layoutId="navIndicator" className="absolute -bottom-5 left-0 right-0 h-0.5 bg-indigo-600 rounded-full" />}
             </button>
-            <div className="pt-4 pb-2">
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider px-3">Available Modules</p>
-            </div>
-            
-            {/* DYNAMIC COURSE LIST */}
-            {Object.keys(ACADEMIC_DATA).map((courseKey) => (
-              <button 
-                key={courseKey}
-                onClick={() => { setActiveCourse(courseKey); setActiveModuleIndex(0); }}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg font-medium transition-colors ${
-                  activeCourse === courseKey ? 'bg-blue-50 text-blue-700 border-l-4 border-blue-600' : 'text-slate-600 hover:bg-slate-50 border-l-4 border-transparent'
-                }`}
-              >
-                <BookOpen size={16} className="shrink-0" /> 
-                <span className="truncate text-left">{courseKey}</span>
-              </button>
-            ))}
+          ))}
+        </div>
 
-            <div className="pt-6 pb-2">
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider px-3">Quick Links</p>
-            </div>
-            <button className="w-full flex items-center gap-3 px-3 py-2 text-sm text-slate-600 rounded-lg hover:bg-slate-50 transition-colors">
-              <FileText size={18} /> University Library
-            </button>
-            <button className="w-full flex items-center gap-3 px-3 py-2 text-sm text-slate-600 rounded-lg hover:bg-slate-50 transition-colors">
-              <Calendar size={18} /> Academic Calendar
-            </button>
-          </nav>
-        </aside>
+        {/* MOBILE MENU ICON */}
+        <button onClick={() => setIsMobileMenuOpen(true)} className="md:hidden text-slate-600 hover:text-indigo-600 p-1">
+          <Menu size={28} />
+        </button>
+      </nav>
 
-        {/* MAIN CONTENT AREA */}
-        <main className="flex-1 overflow-y-auto p-4 md:p-8 bg-slate-50/50">
-          <div className="max-w-5xl mx-auto space-y-6 pb-20">
-            
-            <div className="bg-white p-6 md:p-8 rounded-2xl border border-slate-200 shadow-sm">
-              {/* Course Header Info */}
-              <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4 mb-8 border-b border-slate-100 pb-6">
-                <div>
-                  <div className="flex items-center gap-2 text-xs font-bold text-blue-600 tracking-wider uppercase mb-3">
-                    <Award size={14} /> Post-Graduate Level
-                  </div>
-                  <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900 leading-tight">
-                    {activeCourse}: {ACADEMIC_DATA[activeCourse].title}
-                  </h1>
-                  <div className="flex flex-wrap items-center gap-4 mt-4 text-sm text-slate-500 font-medium">
-                    <span className="flex items-center gap-1.5"><GraduationCap size={16} className="text-slate-400" /> {ACADEMIC_DATA[activeCourse].prof}</span>
-                    <span className="flex items-center gap-1.5"><Clock size={16} className="text-slate-400" /> Est. Reading: {ACADEMIC_DATA[activeCourse].readTime}</span>
-                  </div>
+      {/* MOBILE SLIDE BAR (SIDEBAR) */}
+      <AnimatePresence>
+        {isMobileMenuOpen && (
+          <>
+            <motion.div 
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[60] md:hidden"
+            />
+            <motion.div 
+              initial={{ x: "100%" }} animate={{ x: 0 }} exit={{ x: "100%" }} transition={{ type: "spring", damping: 25, stiffness: 200 }}
+              className="fixed top-0 right-0 bottom-0 w-3/4 max-w-sm bg-white z-[70] shadow-2xl flex flex-col md:hidden"
+            >
+              <div className="p-6 border-b border-slate-100 flex justify-between items-center">
+                <div className="flex items-center gap-2 text-indigo-600">
+                  <LayoutDashboard size={20}/>
+                  <span className="font-bold text-slate-800 text-lg">Menu</span>
                 </div>
+                <button onClick={() => setIsMobileMenuOpen(false)} className="text-slate-400 hover:text-rose-500 bg-slate-50 p-2 rounded-full">
+                  <X size={20}/>
+                </button>
               </div>
-
-              {/* Module Selection Tabs */}
-              <div className="flex border-b border-slate-200 overflow-x-auto scrollbar-hide mb-8">
-                {ACADEMIC_DATA[activeCourse].modules.map((mod, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => setActiveModuleIndex(idx)}
-                    className={`px-5 py-3 text-sm font-bold whitespace-nowrap border-b-2 transition-all ${
-                      activeModuleIndex === idx 
-                      ? 'border-blue-600 text-blue-700 bg-blue-50/50' 
-                      : 'border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-50'
-                    }`}
+              
+              <div className="flex flex-col p-4 gap-2">
+                {[
+                  { id: "home", label: "Home", icon: <LayoutDashboard size={20}/> },
+                  { id: "research", label: "Research", icon: <Beaker size={20}/> },
+                  { id: "courses", label: "Courses", icon: <BookOpen size={20}/> },
+                  { id: "library", label: "Library", icon: <Library size={20}/> }
+                ].map((navItem) => (
+                  <button 
+                    key={navItem.id} 
+                    onClick={() => handleTabChange(navItem.id)} 
+                    className={`flex items-center gap-4 p-4 rounded-xl font-bold transition-all ${activeTab === navItem.id ? "bg-indigo-50 text-indigo-600" : "text-slate-600 hover:bg-slate-50"}`}
                   >
-                    Module {idx + 1}
+                    {navItem.icon} {navItem.label}
                   </button>
                 ))}
               </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
 
-              {/* The Heavy Academic Text Box */}
-              <div className="prose prose-slate prose-lg max-w-none">
-                <h2 className="text-xl md:text-2xl font-bold text-slate-800 mb-6 border-l-4 border-blue-600 pl-4">
-                  {ACADEMIC_DATA[activeCourse].modules[activeModuleIndex].title}
-                </h2>
-                
-                <p className="text-slate-600 leading-loose text-justify text-[15px] md:text-[16px]">
-                  {ACADEMIC_DATA[activeCourse].modules[activeModuleIndex].content}
-                </p>
+      {/* SEARCH BAR */}
+      <div className="bg-white border-b border-slate-100 py-4 md:py-6 px-4 md:px-8 shadow-sm relative z-40">
+        <form onSubmit={handleSearch} className="max-w-4xl mx-auto relative group">
+          <div className="absolute inset-y-0 left-4 md:left-5 flex items-center text-slate-400 group-focus-within:text-indigo-600 transition-colors"><Search size={20} /></div>
+          <input type="text" value={query} onChange={e => setQuery(e.target.value)} placeholder="Search global databases, courses, or encrypted journals..." className="w-full bg-slate-50 border border-slate-200 py-3.5 pl-12 pr-6 rounded-full shadow-inner outline-none focus:bg-white focus:ring-4 ring-indigo-500/10 focus:border-indigo-500 transition-all text-sm font-medium" />
+        </form>
+      </div>
 
-                {/* Extra Fake UI Elements to make it look real */}
-                <div className="mt-10 p-5 bg-slate-50 border border-slate-200 rounded-xl">
-                  <h4 className="text-sm font-bold text-slate-800 mb-2 uppercase tracking-wider">Required Reading Materials</h4>
-                  <ul className="space-y-2 text-sm text-slate-600 list-disc list-inside">
-                    <li>Smith, J. (2024). <em>Global Macro-Trends in Policy Validation.</em> Oxford Univ. Press.</li>
-                    <li>Wellington, A. (2023). <em>Statistical Models for Demographic Assessment.</em> Journal of Advanced Economics, 45(2), 112-145.</li>
-                  </ul>
-                  <button className="mt-4 text-sm font-medium text-blue-600 hover:text-blue-800 transition-colors flex items-center gap-1">
-                    Download Chapter PDF (24.5 MB) →
-                  </button>
+      <main className="relative">
+        <AnimatePresence mode="wait">
+          
+          {/* VIEW 1: HOME PAGE */}
+          {activeTab === "home" && (
+            <motion.div key="home" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+              
+              {/* HERO SECTION */}
+              <section className="relative overflow-hidden pt-16 md:pt-24 pb-20 md:pb-32 text-center border-b border-slate-100 px-4">
+                <motion.div style={{ y: y1 }} className="absolute -top-20 -left-20 w-72 md:w-96 h-72 md:h-96 bg-indigo-100 rounded-full mix-blend-multiply filter blur-3xl opacity-50 z-0" />
+                <motion.div style={{ y: y2 }} className="absolute top-20 -right-20 w-56 md:w-72 h-56 md:h-72 bg-violet-100 rounded-full mix-blend-multiply filter blur-3xl opacity-50 z-0" />
+                <motion.div style={{ opacity: opacityHero }} className="relative z-10 max-w-4xl mx-auto">
+                  <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="inline-block mb-4 md:mb-6 px-4 py-1.5 rounded-full bg-indigo-50 border border-indigo-100 text-indigo-600 text-[10px] md:text-xs font-bold tracking-widest uppercase shadow-sm">Open Source Academic Intelligence</motion.div>
+                  <motion.h1 initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.1 }} className="text-4xl md:text-7xl font-black text-slate-900 mb-6 tracking-tighter leading-tight">Advancing Global Knowledge <br/> <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-violet-500">Beyond Borders.</span></motion.h1>
+                  <motion.p initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.2 }} className="max-w-2xl mx-auto text-slate-500 text-base md:text-xl font-medium leading-relaxed">Access peer-reviewed journals, policy frameworks, and comprehensive course materials curated by the world's leading research institutions.</motion.p>
+                </motion.div>
+              </section>
+
+              {/* STATS SECTION */}
+              <section className="py-10 bg-white border-b border-slate-100 relative z-20 shadow-sm">
+                <div className="max-w-7xl mx-auto px-4 md:px-8 grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-8 md:divide-x divide-slate-100">
+                  <div className="text-center px-2"><Database className="mx-auto text-indigo-500 mb-2 md:mb-3" size={24}/><h3 className="text-2xl md:text-3xl font-black text-slate-800">12.5M+</h3><p className="text-[10px] md:text-xs font-bold text-slate-400 uppercase mt-1">Indexed Papers</p></div>
+                  <div className="text-center px-2"><Globe className="mx-auto text-violet-500 mb-2 md:mb-3" size={24}/><h3 className="text-2xl md:text-3xl font-black text-slate-800">140+</h3><p className="text-[10px] md:text-xs font-bold text-slate-400 uppercase mt-1">Global Partners</p></div>
+                  <div className="text-center px-2 mt-4 md:mt-0"><Users className="mx-auto text-blue-500 mb-2 md:mb-3" size={24}/><h3 className="text-2xl md:text-3xl font-black text-slate-800">850k</h3><p className="text-[10px] md:text-xs font-bold text-slate-400 uppercase mt-1">Active Researchers</p></div>
+                  <div className="text-center px-2 mt-4 md:mt-0"><Shield className="mx-auto text-emerald-500 mb-2 md:mb-3" size={24}/><h3 className="text-2xl md:text-3xl font-black text-slate-800">99.9%</h3><p className="text-[10px] md:text-xs font-bold text-slate-400 uppercase mt-1">Data Integrity</p></div>
+                </div>
+              </section>
+
+              {/* FEATURED RESEARCH SECTION */}
+              <section className="py-16 md:py-24 max-w-7xl mx-auto px-6 md:px-8">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-10 gap-4">
+                  <div>
+                    <h2 className="text-2xl md:text-3xl font-black text-slate-900 flex items-center gap-2 md:gap-3"><LayoutDashboard size={24} className="text-indigo-500 md:w-7 md:h-7"/> Featured Research Briefs</h2>
+                    <p className="text-slate-500 mt-2 font-medium text-sm md:text-base">Recently curated documents from our top-tier academic network.</p>
+                  </div>
+                  <button onClick={() => handleTabChange("research")} className="text-indigo-600 font-bold text-sm flex items-center gap-1 hover:gap-2 transition-all">View Complete Archive <ChevronRight size={18}/></button>
                 </div>
 
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
+                  <AnimatePresence>
+                    {filteredData.map((item, i) => (
+                      <motion.div 
+                        layout key={item._id}
+                        initial={{ opacity: 0, y: 30 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true, margin: "-50px" }}
+                        transition={{ delay: i * 0.1, duration: 0.5 }}
+                        onClick={() => openReport(item)} 
+                        className="group relative p-6 md:p-8 bg-white border border-slate-200/75 rounded-3xl md:rounded-[2rem] hover:shadow-2xl hover:shadow-indigo-500/10 hover:-translate-y-2 transition-all duration-300 cursor-pointer flex flex-col h-full overflow-hidden"
+                      >
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-indigo-50 to-transparent rounded-bl-full opacity-50 transition-opacity group-hover:opacity-100 z-0"></div>
+                        <div className="w-12 h-12 md:w-14 md:h-14 bg-slate-50 text-slate-400 border border-slate-100 rounded-2xl flex items-center justify-center mb-5 md:mb-6 group-hover:bg-indigo-600 group-hover:text-white group-hover:border-indigo-600 transition-all z-10 shadow-sm"><FileText size={20} className="md:w-6 md:h-6" /></div>
+                        <h3 className="text-lg md:text-xl font-bold mb-3 text-slate-800 leading-tight z-10">{item.title}</h3>
+                        <p className="text-slate-500 text-xs md:text-sm leading-relaxed mb-6 md:mb-8 line-clamp-3 flex-grow z-10">{item.description}</p>
+                        <div className="flex items-center justify-between pt-4 md:pt-5 border-t border-slate-100 z-10">
+                          <span className="text-[9px] md:text-[10px] font-bold uppercase tracking-widest text-indigo-600 bg-indigo-50 px-2.5 py-1 md:px-3 md:py-1.5 rounded-md">{item.category || "General"}</span>
+                          <span className="text-slate-300 group-hover:text-indigo-600 group-hover:translate-x-1 transition-all"><ChevronRight size={18}/></span>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </AnimatePresence>
+                </div>
+              </section>
+
+              {/* ACADEMIC COURSE NOTES INFOGRAPHIC */}
+              <section className="py-20 md:py-28 bg-white border-t border-slate-100 relative z-20">
+                <div className="max-w-7xl mx-auto px-6 md:px-8">
+                  <div className="text-center max-w-3xl mx-auto mb-16">
+                    <motion.div initial={{ scale: 0.9, opacity: 0 }} whileInView={{ scale: 1, opacity: 1 }} viewport={{ once: true }} className="inline-block mb-4 px-4 py-1.5 rounded-full bg-blue-50 border border-blue-100 text-blue-600 text-[10px] md:text-xs font-bold tracking-widest uppercase shadow-sm">Academic Disciplines</motion.div>
+                    <h2 className="text-3xl md:text-5xl font-black text-slate-900 mb-6">Comprehensive Course Materials</h2>
+                    <p className="text-slate-500 text-base md:text-lg">Our archives house meticulously curated lecture notes, research papers, and exam preparations across major undergraduate and postgraduate programs.</p>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    {[
+                      { icon: <Cpu size={28}/>, title: "Engineering & IT", courses: "B.Tech • M.Tech • BCA", color: "from-blue-500 to-cyan-500", bg: "bg-blue-50", text: "text-blue-600" },
+                      { icon: <TrendingUp size={28}/>, title: "Business & Management", courses: "BBA • MBA • PGDM", color: "from-emerald-500 to-teal-500", bg: "bg-emerald-50", text: "text-emerald-600" },
+                      { icon: <Compass size={28}/>, title: "Tourism & Hospitality", courses: "BTTM • MTTM • Aviation", color: "from-amber-500 to-orange-500", bg: "bg-amber-50", text: "text-amber-600" },
+                      { icon: <Monitor size={28}/>, title: "Applied Sciences", courses: "B.Sc • M.Sc • Research", color: "from-violet-500 to-purple-500", bg: "bg-violet-50", text: "text-violet-600" }
+                    ].map((faculty, idx) => (
+                      <motion.div 
+                        key={idx} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: idx * 0.15 }}
+                        className="relative p-8 bg-white border border-slate-100 rounded-[2rem] shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group overflow-hidden"
+                      >
+                        <div className={`absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r ${faculty.color} opacity-80 group-hover:opacity-100 transition-opacity`}></div>
+                        <div className={`w-14 h-14 ${faculty.bg} ${faculty.text} rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300`}>
+                          {faculty.icon}
+                        </div>
+                        <h3 className="text-xl font-bold text-slate-800 mb-2">{faculty.title}</h3>
+                        <p className="text-sm font-semibold text-slate-500 mb-4">{faculty.courses}</p>
+                        <ul className="space-y-2 text-xs text-slate-400">
+                          <li className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-slate-300"></div> Complete Lecture Notes</li>
+                          <li className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-slate-300"></div> Previous Year Papers</li>
+                          <li className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-slate-300"></div> Research Methodologies</li>
+                        </ul>
+                      </motion.div>
+                    ))}
+                  </div>
+                </div>
+              </section>
+
+              {/* WHY CHOOSE US */}
+              <section className="py-16 md:py-24 bg-slate-50 border-y border-slate-200">
+                <div className="max-w-7xl mx-auto px-6 md:px-8">
+                  <div className="text-center max-w-2xl mx-auto mb-12 md:mb-16">
+                    <h2 className="text-2xl md:text-3xl font-black text-slate-900 mb-3 md:mb-4">Uncompromising Academic Integrity</h2>
+                    <p className="text-slate-500 text-sm md:text-base">Our repository is built on strict peer-reviewed standards, ensuring your research is backed by verified, unalterable data.</p>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-10">
+                    {[
+                      { icon: <Award size={28}/>, title: "Peer-Reviewed Excellence", desc: "Every journal and dataset passes through a rigorous double-blind peer review process by our academic council." },
+                      { icon: <Shield size={28}/>, title: "Encrypted Archives", desc: "Historical data and sensitive geopolitical policy frameworks are stored using AES-256 encryption standards." },
+                      { icon: <Zap size={28}/>, title: "Real-Time Policy Index", desc: "Access the latest shifts in macro-environmental dynamics and global trade agreements the moment they are ratified." }
+                    ].map((feature, idx) => (
+                      <motion.div key={idx} initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: idx * 0.2 }} className="bg-white p-6 md:p-8 rounded-3xl border border-slate-100 shadow-sm text-center hover:shadow-md transition-shadow">
+                        <div className="w-14 h-14 md:w-16 md:h-16 mx-auto bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center mb-5 md:mb-6">{feature.icon}</div>
+                        <h3 className="text-lg md:text-xl font-bold text-slate-800 mb-3">{feature.title}</h3>
+                        <p className="text-slate-500 text-xs md:text-sm leading-relaxed">{feature.desc}</p>
+                      </motion.div>
+                    ))}
+                  </div>
+                </div>
+              </section>
+            </motion.div>
+          )}
+
+          {/* VIEW 2: OTHER TABS */}
+          {activeTab !== "home" && (
+            <motion.div key="other-tabs" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="max-w-7xl mx-auto px-6 md:px-8 py-10 md:py-16 min-h-[60vh]">
+              <div className="mb-10 md:mb-12 border-b border-slate-200 pb-6 md:pb-8">
+                <h1 className="text-3xl md:text-4xl font-black text-slate-900 capitalize flex items-center gap-3">
+                  {activeTab === "research" && <Beaker className="text-indigo-600" size={32}/>}
+                  {activeTab === "courses" && <BookOpen className="text-violet-600" size={32}/>}
+                  {activeTab === "library" && <Library className="text-blue-600" size={32}/>}
+                  Global {activeTab}
+                </h1>
+                <p className="text-slate-500 mt-2 text-base md:text-lg font-medium">
+                  {activeTab === "research" && "Exploring geopolitical data and peer-reviewed journals."}
+                  {activeTab === "courses" && "Interactive academic modules, B.Tech, MBA notes and certification tracks."}
+                  {activeTab === "library" && "Archived documents, historical records, and policy frameworks."}
+                </p>
               </div>
-            </div>
 
-            {/* Fake Footer / Copyright */}
-            <div className="text-center text-xs text-slate-400 mt-12">
-              <p>© 2026 Global Studies Hub. Department of Advanced Academic Research.</p>
-              <p>System Ver 4.2.1-stable. All analytical data is encrypted for academic integrity.</p>
-            </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
+                <AnimatePresence>
+                  {filteredData.length > 0 ? (
+                    filteredData.map((item, i) => (
+                      <motion.div 
+                        layout key={item._id} initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} transition={{ delay: i * 0.05 }}
+                        onClick={() => openReport(item)} 
+                        className="group relative p-6 md:p-8 bg-white border border-slate-200/75 rounded-3xl md:rounded-[2rem] hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer flex flex-col h-full"
+                      >
+                        <div className="w-12 h-12 bg-slate-50 text-slate-400 border border-slate-100 rounded-2xl flex items-center justify-center mb-5 md:mb-6 group-hover:bg-indigo-600 group-hover:text-white transition-all z-10"><FileText size={20} /></div>
+                        <h3 className="text-lg md:text-xl font-bold mb-3 text-slate-800 leading-tight z-10">{item.title}</h3>
+                        <p className="text-slate-500 text-xs md:text-sm leading-relaxed mb-6 md:mb-8 line-clamp-3 flex-grow z-10">{item.description}</p>
+                        {activeTab === "courses" && <div className="w-full bg-slate-100 h-1.5 rounded-full mb-5 md:mb-6 overflow-hidden"><div className="bg-violet-500 h-full rounded-full" style={{ width: `${Math.floor(Math.random() * 60) + 10}%` }}></div></div>}
+                        <div className="flex items-center justify-between pt-4 border-t border-slate-100 z-10">
+                          <span className="text-[9px] md:text-[10px] font-bold uppercase tracking-widest text-indigo-600 bg-indigo-50 px-2.5 py-1.5 rounded-md">{item.category || "General"}</span>
+                          <span className="text-slate-400 group-hover:text-indigo-600 transition-all"><ChevronRight size={18}/></span>
+                        </div>
+                      </motion.div>
+                    ))
+                  ) : (
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="col-span-full py-16 md:py-20 text-center border border-dashed border-slate-200 rounded-3xl md:rounded-[2rem] bg-slate-50">
+                      <div className="inline-flex items-center justify-center w-16 h-16 md:w-20 md:h-20 bg-white rounded-full mb-4 text-slate-400 shadow-sm"><Search size={28} className="md:w-8 md:h-8" /></div>
+                      <h3 className="text-lg md:text-xl font-bold text-slate-700">No records found</h3>
+                      <p className="text-slate-500 mt-2 text-sm md:text-base">No documents have been classified under this sector yet.</p>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </main>
 
+      {/* FOOTER & CONTACT FORM */}
+      <footer className="bg-[#0a0f1c] text-slate-400 py-12 md:py-16 border-t border-slate-800 relative z-10 pb-24 md:pb-12">
+        <div className="max-w-7xl mx-auto px-6 md:px-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-10 md:gap-16 mb-12">
+            <div>
+              <div className="flex items-center gap-2 mb-5"><GraduationCap size={28} className="text-indigo-500" /><span className="font-bold tracking-tight text-white text-xl">Global Studies Archive</span></div>
+              <p className="text-sm leading-relaxed mb-6 md:pr-10 text-slate-400">Dedicated to the preservation, peer-review, and global distribution of socio-economic and geopolitical research. Empowering academics worldwide.</p>
+              
+            </div>
+            
+            <div className="bg-[#121827] border border-slate-800 p-6 rounded-2xl">
+              <h4 className="text-white font-bold mb-5 flex items-center gap-2">Contact Registry <Send size={16} className="text-indigo-500"/></h4>
+              <form className="space-y-4" onSubmit={handleContactSubmit}>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <input required type="text" placeholder="Full Name" value={contactForm.name} onChange={e => setContactForm({...contactForm, name: e.target.value})} className="w-full bg-[#0a0f1c] border border-slate-800 rounded-lg px-4 py-2.5 text-sm text-slate-200 outline-none focus:border-indigo-500 transition-colors" />
+                  <input required type="email" placeholder="Email Address" value={contactForm.email} onChange={e => setContactForm({...contactForm, email: e.target.value})} className="w-full bg-[#0a0f1c] border border-slate-800 rounded-lg px-4 py-2.5 text-sm text-slate-200 outline-none focus:border-indigo-500 transition-colors" />
+                </div>
+                <textarea required placeholder="Research Inquiry / Message" rows="3" value={contactForm.message} onChange={e => setContactForm({...contactForm, message: e.target.value})} className="w-full bg-[#0a0f1c] border border-slate-800 rounded-lg px-4 py-3 text-sm text-slate-200 outline-none focus:border-indigo-500 transition-colors resize-none"></textarea>
+                <button disabled={isSending} type="submit" className="w-full bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold py-3 rounded-lg transition-colors shadow-lg shadow-indigo-500/20 disabled:opacity-50">
+                  {isSending ? "Sending..." : "Submit Enquiry"}
+                </button>
+              </form>
+            </div>
           </div>
-        </main>
-      </div>
+          <div className="pt-8 border-t border-slate-800/50 flex flex-col md:flex-row justify-between items-center gap-4 text-xs text-center md:text-left">
+            <p>© 2026 Global Studies Archive. Department of Advanced Academic Research.</p>
+            <p className="flex items-center gap-2 justify-center"><Shield size={14} className="text-emerald-500"/> System Ver 4.2.1-stable. End-to-End Encrypted.</p>
+          </div>
+        </div>
+      </footer>
+
+      {/* MODAL */}
+      <AnimatePresence>
+        {selectedReport && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[80] flex items-center justify-center p-4 sm:p-6 bg-slate-900/60 backdrop-blur-md" onClick={() => setSelectedReport(null)}>
+            <motion.div initial={{ y: 50, opacity: 0, scale: 0.95 }} animate={{ y: 0, opacity: 1, scale: 1 }} exit={{ y: 20, opacity: 0, scale: 0.95 }} onClick={(e) => e.stopPropagation()} className="bg-white w-full max-w-4xl max-h-[90vh] rounded-3xl md:rounded-[2rem] shadow-2xl flex flex-col overflow-hidden border border-slate-100">
+              <div className="flex justify-between items-start p-6 md:p-10 border-b border-slate-100 bg-slate-50/50">
+                <div className="pr-4 md:pr-8">
+                  <span className="text-[9px] md:text-[10px] font-bold uppercase tracking-widest text-indigo-600 bg-indigo-100 px-3 py-1.5 rounded-md mb-3 md:mb-4 inline-block">{selectedReport.category || "Classified Document"}</span>
+                  <h2 className="text-xl md:text-4xl font-black text-slate-900 leading-tight">{selectedReport.title}</h2>
+                </div>
+                <button onClick={() => setSelectedReport(null)} className="p-2 md:p-2.5 bg-white rounded-full text-slate-400 hover:text-rose-500 hover:bg-rose-50 transition-all shadow-sm border border-slate-200 flex-shrink-0"><X size={20} className="md:w-6 md:h-6" /></button>
+              </div>
+              <div className="p-6 md:p-10 overflow-y-auto bg-white flex-1 text-slate-600 leading-relaxed whitespace-pre-wrap text-sm md:text-base selection:bg-indigo-100 custom-scrollbar">{selectedReport.fullContent}</div>
+              <div className="p-6 md:px-10 md:py-6 border-t border-slate-100 bg-slate-50 flex flex-col md:flex-row justify-between items-center gap-4">
+                <p className="text-xs text-slate-400 font-mono flex items-center gap-2"><Database size={14}/> Doc ID: {selectedReport._id?.substring(0, 10) || "N/A"}</p>
+                <button onClick={() => setSelectedReport(null)} className="w-full md:w-auto px-8 py-3 bg-slate-900 hover:bg-indigo-600 text-white rounded-xl text-sm font-bold transition-all shadow-lg shadow-slate-900/20 hover:shadow-indigo-600/30">Close Archive</button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
