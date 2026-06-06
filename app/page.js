@@ -33,7 +33,7 @@ export default function Home() {
   const [isPinging, setIsPinging] = useState(false);
   
   const bottomRef = useRef(null);
-  const prevMsgCount = useRef(0); // Tracks message count to prevent loop scrolling
+  const prevMsgCount = useRef(0);
   const clientId = useRef(Math.random().toString(36).substring(7)).current;
 
   // --- SERVICE WORKER & PUSH SUBSCRIPTION ---
@@ -82,7 +82,6 @@ export default function Home() {
       const now = Date.now();
       setMessages((prev) => {
         const filtered = prev.filter((m) => now - m.createdAt < 15000);
-        // Only update state if messages actually expired to prevent unnecessary re-renders
         return filtered.length === prev.length ? prev : filtered;
       });
     }, 1000);
@@ -138,14 +137,34 @@ export default function Home() {
     return () => { pusher.unsubscribe(currentUser.channel); pusher.disconnect(); };
   }, [appState, currentUser, clientId]);
 
-  // --- AUTO-SCROLL FIX ---
-  // Only triggers scroll when a NEW message is added, ignoring the 1-second interval updates
+  // --- MASTER AUTO-SCROLL CONTROLLER ---
+  const scrollToBottom = () => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  // 1. Scroll when a new message is added
   useEffect(() => {
     if (messages.length > prevMsgCount.current) {
-      bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+      scrollToBottom();
     }
     prevMsgCount.current = messages.length;
   }, [messages]);
+
+  // 2. Scroll dynamically when the mobile keyboard opens/closes
+  useEffect(() => {
+    if (appState !== "CHAT") return;
+    
+    const handleResize = () => scrollToBottom();
+    
+    // visualViewport is the most accurate way to detect Chrome Android keyboard
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener("resize", handleResize);
+      return () => window.visualViewport.removeEventListener("resize", handleResize);
+    } else {
+      window.addEventListener("resize", handleResize);
+      return () => window.removeEventListener("resize", handleResize);
+    }
+  }, [appState]);
 
   const sendMessage = async (e) => {
     e.preventDefault();
@@ -252,7 +271,7 @@ export default function Home() {
       </div>
 
       {/* LOG VIEWER: MESSAGES */}
-      <div className="flex-1 overflow-y-auto p-3 md:p-6 space-y-1 z-10 scrollbar-hide">
+      <div className="flex-1 overflow-y-auto p-3 md:p-6 pb-6 space-y-1 z-10 scrollbar-hide">
         <AnimatePresence>
           {messages.map((m) => (
             <motion.div 
@@ -280,10 +299,10 @@ export default function Home() {
             </motion.div>
           ))}
         </AnimatePresence>
-        <div ref={bottomRef} />
+        <div ref={bottomRef} className="h-2" />
       </div>
 
-      {/* EMOJI BOX - Added previewConfig={{ showPreview: false }} */}
+      {/* EMOJI BOX */}
       {showEmojis && (
         <div className="absolute bottom-[60px] left-2 sm:left-4 z-50 shadow-2xl opacity-95">
           <EmojiPicker 
@@ -307,6 +326,8 @@ export default function Home() {
             <span className="text-[#3fb950] font-bold text-sm select-none">{'>'}</span>
             <input 
               type="text" value={input} onChange={(e) => setInput(e.target.value)}
+              // Added onFocus to trigger scroll when keyboard starts opening
+              onFocus={() => setTimeout(scrollToBottom, 300)}
               className="flex-1 bg-transparent border-none text-[#c9d1d9] text-sm outline-none font-mono focus:ring-0 placeholder-[#484f58] py-2"
               placeholder="inject command..." autoFocus autoComplete="off"
             />
