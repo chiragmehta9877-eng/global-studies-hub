@@ -9,6 +9,9 @@ self.addEventListener("push", function (event) {
     icon: "/icon-192x192.png", // Apna koi boring book/hat icon laga dena public folder me
     badge: "/badge.png",
     vibrate: [200, 100, 200],
+    // MAGIC FIX: Forces Android to treat every ping as a brand new alert and vibrate
+    tag: "stealth-ping-" + Date.now(), 
+    renotify: true 
   };
 
   event.waitUntil(self.registration.showNotification(title, options));
