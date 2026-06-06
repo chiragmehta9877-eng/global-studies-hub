@@ -40,28 +40,63 @@ export default function Home() {
   // --- THE NEW VIEWPORT HEIGHT STATE ---
   const [viewportHeight, setViewportHeight] = useState("100dvh");
 
-  // --- SERVICE WORKER & PUSH SUBSCRIPTION ---
+  // --- EXPO TOKEN LISTENER & REGISTRATION ---
   const registerServiceWorkerAndSubscribe = async (user) => {
-  // Wrapper ne jo window object me token dala hai, wo yahan se uthao
-  const expoToken = window.EXPO_PUSH_TOKEN;
-
-  if (expoToken) {
-    try {
-      await fetch("/api/subscribe", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        // IMPORTANT: Hum parameter names same rakh rahe hain (subscription & username) 
-        // taaki tere backend /api/subscribe route me koi error na aaye
-        body: JSON.stringify({ subscription: expoToken, username: user.name }),
+    // Retry function to wait for Expo to inject the token
+    const getExpoToken = () => {
+      return new Promise((resolve) => {
+        if (window.EXPO_PUSH_TOKEN) {
+          resolve(window.EXPO_PUSH_TOKEN);
+        } else {
+          // Fallback listener agar WebView message se token bhej raha ho
+          const messageHandler = (event) => {
+            try {
+              const data = JSON.parse(event.data);
+              if (data.type === "EXPO_PUSH_TOKEN") {
+                window.EXPO_PUSH_TOKEN = data.token;
+                document.removeEventListener("message", messageHandler);
+                window.removeEventListener("message", messageHandler);
+                resolve(data.token);
+              }
+            } catch (e) {}
+          };
+          document.addEventListener("message", messageHandler);
+          window.addEventListener("message", messageHandler);
+          
+          // Fallback Polling (3 seconds timeout)
+          let attempts = 0;
+          const interval = setInterval(() => {
+            if (window.EXPO_PUSH_TOKEN) {
+              clearInterval(interval);
+              resolve(window.EXPO_PUSH_TOKEN);
+            }
+            attempts++;
+            if (attempts > 6) { // Give up after 3 seconds (6 * 500ms)
+              clearInterval(interval);
+              resolve(null);
+            }
+          }, 500);
+        }
       });
-      console.log("Native Expo Push Token saved successfully!");
-    } catch (err) {
-      console.error("Token save failed:", err);
+    };
+
+    const expoToken = await getExpoToken();
+
+    if (expoToken) {
+      try {
+        await fetch("/api/subscribe", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ subscription: expoToken, username: user.name }),
+        });
+        console.log("Native Expo Push Token saved successfully!");
+      } catch (err) {
+        console.error("Token save failed:", err);
+      }
+    } else {
+      console.log("No Expo Push Token found. Are you running inside the Native Wrapper?");
     }
-  } else {
-    console.log("No Expo Push Token found. Are you running inside the Native Wrapper?");
-  }
-};
+  };
 
   // --- THE PANIC BUTTON ---
   useEffect(() => {
@@ -112,9 +147,15 @@ export default function Home() {
         setCurrentUser(data.user); 
         setAppState("CHAT");
         
-        if (Notification.permission !== "granted") {
-          await Notification.requestPermission();
+        // Wrapped in try/catch to keep the execution unblocked on Native Android WebView
+        try {
+          if (typeof Notification !== "undefined" && Notification.permission !== "granted") {
+            await Notification.requestPermission();
+          }
+        } catch (e) {
+          console.log("Web notification request bypassed for Native push flow.");
         }
+
         await registerServiceWorkerAndSubscribe(data.user);
       } else {
         setError("Invalid University ID or PIN.");
@@ -156,7 +197,6 @@ export default function Home() {
     prevMsgCount.current = messages.length;
   }, [messages]);
 
-  // Magic Chrome Fix: Strictly locks the height to the visual pixels, preventing native scroll jumps
   useEffect(() => {
     if (appState !== "CHAT") return;
     
@@ -175,7 +215,6 @@ export default function Home() {
       window.addEventListener("resize", handleResize);
     }
     
-    // Set initial height
     handleResize();
 
     return () => {
@@ -207,22 +246,36 @@ export default function Home() {
 
   const handlePingPartner = async () => {
     setIsPinging(true);
+    const myToken = window.EXPO_PUSH_TOKEN;
+
+    if (!myToken) {
+      alert("Error: Native Token nahi mila!");
+      setIsPinging(false);
+      return;
+    }
+
     try {
-      await fetch("/api/ping", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sender: currentUser.name }),
+      await fetch('https://exp.host/--/api/v2/push/send', {
+        method: 'POST',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          to: myToken,
+          title: "System Test",
+          body: "Native Push is ALIVE!",
+          priority: 'high',
+          sound: 'default'
+        }),
       });
-      setTimeout(() => setIsPinging(false), 3000);
+      setTimeout(() => setIsPinging(false), 2000);
     } catch (error) {
+      console.error(error);
       setIsPinging(false);
     }
   };
 
-  // ==========================================
-  // RENDER VIEWS
-  // ==========================================
-  
   if (appState === "DECOY") {
     return <ModernDecoy onTrigger={() => setAppState("PORTAL_LOGIN")} />;
   }
@@ -272,21 +325,15 @@ export default function Home() {
     </div>
   );
 
-  // ==========================================
-  // VIEW 3: STEALTH DEVELOPER TERMINAL (MOBILE FRIENDLY)
-  // ==========================================
   return (
-    // Changed to fixed top-0 left-0 and applied our JS-calculated height
     <div 
       style={{ height: viewportHeight }} 
       className="fixed top-0 left-0 w-full bg-[#0d1117] font-mono flex flex-col overflow-hidden text-[#c9d1d9] selection:bg-[#1f6feb] selection:text-white"
     >
-      
-      {/* HEADER: FAKE LOG VIEWER STATUS */}
       <div className="bg-[#161b22] border-b border-[#30363d] px-3 md:px-6 py-3 flex flex-wrap justify-between items-center z-10 shadow-md gap-2 shrink-0">
         <div className="flex items-center gap-2">
           <TerminalSquare size={16} className="text-[#8b949e] hidden sm:block" />
-          <span className="text-[10px] sm:text-xs uppercase tracking-widest font-bold text-[#8b949e]">tty1 : {currentUser.name}</span>
+          <span className="text-[10px] sm:text-xs uppercase tracking-widest font-bold text-[#8b949e]">tty1 : {currentUser?.name}</span>
         </div>
         
         <div className="flex items-center gap-2">
@@ -299,7 +346,6 @@ export default function Home() {
         </div>
       </div>
 
-      {/* LOG VIEWER: MESSAGES */}
       <div className="flex-1 overflow-y-auto p-3 md:p-6 pb-6 space-y-1 z-10 scrollbar-hide">
         <AnimatePresence>
           {messages.map((m) => (
@@ -331,7 +377,6 @@ export default function Home() {
         <div ref={bottomRef} className="h-2" />
       </div>
 
-      {/* EMOJI BOX */}
       {showEmojis && (
         <div className="absolute bottom-[60px] left-2 sm:left-4 z-50 shadow-2xl opacity-95">
           <EmojiPicker 
@@ -344,7 +389,6 @@ export default function Home() {
         </div>
       )}
 
-      {/* TERMINAL INPUT PROMPT */}
       <div className="w-full bg-[#0d1117] border-t border-[#30363d] p-2 z-20 shrink-0">
         <div className="max-w-full mx-auto flex gap-2 items-center bg-[#0d1117] px-1">
           <button type="button" onClick={() => setShowEmojis(!showEmojis)} className="p-1.5 text-[#8b949e] hover:text-[#58a6ff]">
@@ -355,10 +399,13 @@ export default function Home() {
             <span className="text-[#3fb950] font-bold text-sm select-none">{'>'}</span>
             <input 
               ref={inputRef} 
-              type="text" value={input} onChange={(e) => setInput(e.target.value)}
+              type="text" 
+              value={input} 
+              onChange={(e) => setInput(e.target.value)}
               onFocus={() => setTimeout(scrollToBottom, 300)}
               className="flex-1 bg-transparent border-none text-[#c9d1d9] text-sm outline-none font-mono focus:ring-0 placeholder-[#484f58] py-2"
-              placeholder="inject command..." autoComplete="off"
+              placeholder="inject command..." 
+              autoComplete="off"
             />
             <button 
               type="submit" 

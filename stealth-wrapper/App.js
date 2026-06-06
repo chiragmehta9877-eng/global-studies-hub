@@ -18,7 +18,7 @@ export default function App() {
   const [expoPushToken, setExpoPushToken] = useState('');
 
   // IMPORTANT: Use your PC's local IP address for testing, NOT localhost.
-  const WEB_APP_URL = "http://YOUR_LOCAL_IP_ADDRESS:3000"; 
+  const WEB_APP_URL = "https://globalstudiesarchive.netlify.app";
 
   useEffect(() => {
     registerForPushNotificationsAsync().then(token => {
