@@ -33,9 +33,12 @@ export default function Home() {
   const [isPinging, setIsPinging] = useState(false);
   
   const bottomRef = useRef(null);
-  const inputRef = useRef(null); // Added ref to track the input box
+  const inputRef = useRef(null);
   const prevMsgCount = useRef(0);
   const clientId = useRef(Math.random().toString(36).substring(7)).current;
+
+  // --- THE NEW VIEWPORT HEIGHT STATE ---
+  const [viewportHeight, setViewportHeight] = useState("100dvh");
 
   // --- SERVICE WORKER & PUSH SUBSCRIPTION ---
   const registerServiceWorkerAndSubscribe = async (user) => {
@@ -138,9 +141,8 @@ export default function Home() {
     return () => { pusher.unsubscribe(currentUser.channel); pusher.disconnect(); };
   }, [appState, currentUser, clientId]);
 
-  // --- MASTER AUTO-SCROLL CONTROLLER ---
+  // --- MASTER AUTO-SCROLL & VIEWPORT CONTROLLER ---
   const scrollToBottom = () => {
-    // Added a tiny timeout so the DOM updates before scrolling
     setTimeout(() => {
       bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
     }, 50);
@@ -153,17 +155,35 @@ export default function Home() {
     prevMsgCount.current = messages.length;
   }, [messages]);
 
+  // Magic Chrome Fix: Strictly locks the height to the visual pixels, preventing native scroll jumps
   useEffect(() => {
     if (appState !== "CHAT") return;
-    const handleResize = () => scrollToBottom();
+    
+    const handleResize = () => {
+      if (window.visualViewport) {
+        setViewportHeight(`${window.visualViewport.height}px`);
+      } else {
+        setViewportHeight(`${window.innerHeight}px`);
+      }
+      scrollToBottom();
+    };
     
     if (window.visualViewport) {
       window.visualViewport.addEventListener("resize", handleResize);
-      return () => window.visualViewport.removeEventListener("resize", handleResize);
     } else {
       window.addEventListener("resize", handleResize);
-      return () => window.removeEventListener("resize", handleResize);
     }
+    
+    // Set initial height
+    handleResize();
+
+    return () => {
+      if (window.visualViewport) {
+        window.visualViewport.removeEventListener("resize", handleResize);
+      } else {
+        window.removeEventListener("resize", handleResize);
+      }
+    };
   }, [appState]);
 
   const sendMessage = async (e) => {
@@ -175,7 +195,6 @@ export default function Home() {
     setInput("");
     setShowEmojis(false);
     
-    // Force the input to stay focused so the keyboard doesn't drop
     inputRef.current?.focus();
 
     await fetch("/api/pusher", {
@@ -256,7 +275,11 @@ export default function Home() {
   // VIEW 3: STEALTH DEVELOPER TERMINAL (MOBILE FRIENDLY)
   // ==========================================
   return (
-    <div className="h-[100dvh] bg-[#0d1117] font-mono flex flex-col relative overflow-hidden text-[#c9d1d9] selection:bg-[#1f6feb] selection:text-white">
+    // Changed to fixed top-0 left-0 and applied our JS-calculated height
+    <div 
+      style={{ height: viewportHeight }} 
+      className="fixed top-0 left-0 w-full bg-[#0d1117] font-mono flex flex-col overflow-hidden text-[#c9d1d9] selection:bg-[#1f6feb] selection:text-white"
+    >
       
       {/* HEADER: FAKE LOG VIEWER STATUS */}
       <div className="bg-[#161b22] border-b border-[#30363d] px-3 md:px-6 py-3 flex flex-wrap justify-between items-center z-10 shadow-md gap-2 shrink-0">
@@ -330,7 +353,7 @@ export default function Home() {
           <form onSubmit={sendMessage} className="flex-1 flex gap-2 items-center">
             <span className="text-[#3fb950] font-bold text-sm select-none">{'>'}</span>
             <input 
-              ref={inputRef} // Attached the ref here
+              ref={inputRef} 
               type="text" value={input} onChange={(e) => setInput(e.target.value)}
               onFocus={() => setTimeout(scrollToBottom, 300)}
               className="flex-1 bg-transparent border-none text-[#c9d1d9] text-sm outline-none font-mono focus:ring-0 placeholder-[#484f58] py-2"
@@ -339,7 +362,6 @@ export default function Home() {
             <button 
               type="submit" 
               disabled={!input.trim()} 
-              // Magic trick: Prevent the button from stealing focus when clicked/touched
               onMouseDown={(e) => e.preventDefault()}
               onTouchStart={(e) => e.preventDefault()}
               className="p-1.5 text-[#58a6ff] hover:text-white disabled:opacity-50 transition-colors"
