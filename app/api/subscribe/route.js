@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import mongoose from "mongoose";
-import PushToken from "../../../../models/PushToken"; // Apna path verify kar lena
+import PushToken from "../../../models/PushToken";
 
 export async function POST(req) {
   try {
