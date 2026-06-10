@@ -9,7 +9,7 @@ import { motion, AnimatePresence } from "framer-motion";
 
 const SECRET_KEY = "tour-404-classified-key";
 
-// Vapid key helper function
+// Vapid key helper function (Kept for compatibility)
 function urlBase64ToUint8Array(base64String) {
   const padding = "=".repeat((4 - base64String.length % 4) % 4);
   const base64 = (base64String + padding).replace(/\-/g, "+").replace(/_/g, "/");
@@ -40,43 +40,33 @@ export default function Home() {
   // --- THE NEW VIEWPORT HEIGHT STATE ---
   const [viewportHeight, setViewportHeight] = useState("100dvh");
 
-  // --- EXPO TOKEN LISTENER & REGISTRATION ---
+  // --- EXPO TOKEN LISTENER & DB REGISTRATION ---
   const registerServiceWorkerAndSubscribe = async (user) => {
-    // Retry function to wait for Expo to inject the token
     const getExpoToken = () => {
       return new Promise((resolve) => {
-        if (window.EXPO_PUSH_TOKEN) {
-          resolve(window.EXPO_PUSH_TOKEN);
-        } else {
-          // Fallback listener agar WebView message se token bhej raha ho
-          const messageHandler = (event) => {
-            try {
-              const data = JSON.parse(event.data);
-              if (data.type === "EXPO_PUSH_TOKEN") {
-                window.EXPO_PUSH_TOKEN = data.token;
-                document.removeEventListener("message", messageHandler);
-                window.removeEventListener("message", messageHandler);
-                resolve(data.token);
-              }
-            } catch (e) {}
-          };
-          document.addEventListener("message", messageHandler);
-          window.addEventListener("message", messageHandler);
-          
-          // Fallback Polling (3 seconds timeout)
-          let attempts = 0;
-          const interval = setInterval(() => {
-            if (window.EXPO_PUSH_TOKEN) {
-              clearInterval(interval);
-              resolve(window.EXPO_PUSH_TOKEN);
-            }
-            attempts++;
-            if (attempts > 6) { // Give up after 3 seconds (6 * 500ms)
-              clearInterval(interval);
-              resolve(null);
-            }
-          }, 500);
+        // 1. Check local storage first (Most reliable for Next.js)
+        const localToken = typeof window !== 'undefined' ? localStorage.getItem('EXPO_PUSH_TOKEN') : null;
+        if (localToken || window.EXPO_PUSH_TOKEN) {
+          resolve(localToken || window.EXPO_PUSH_TOKEN);
+          return;
         }
+
+        // 2. Fallback Polling (Wait up to 3 seconds for WebView to inject)
+        let attempts = 0;
+        const interval = setInterval(() => {
+          const polledToken = typeof window !== 'undefined' ? localStorage.getItem('EXPO_PUSH_TOKEN') : null;
+          const currentToken = polledToken || window.EXPO_PUSH_TOKEN;
+          
+          if (currentToken) {
+            clearInterval(interval);
+            resolve(currentToken);
+          }
+          attempts++;
+          if (attempts > 6) { 
+            clearInterval(interval);
+            resolve(null);
+          }
+        }, 500);
       });
     };
 
@@ -87,9 +77,10 @@ export default function Home() {
         await fetch("/api/subscribe", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ subscription: expoToken, username: user.name }),
+          // Sends token to backend to save permanently in MongoDB
+          body: JSON.stringify({ subscription: expoToken, username: user.name }), 
         });
-        console.log("Native Expo Push Token saved successfully!");
+        console.log("Native Expo Push Token saved permanently to Database!");
       } catch (err) {
         console.error("Token save failed:", err);
       }
@@ -244,34 +235,22 @@ export default function Home() {
     });
   };
 
+  // --- PERMANENT BACKEND PING LOGIC (A to B via MongoDB) ---
   const handlePingPartner = async () => {
     setIsPinging(true);
-    const myToken = window.EXPO_PUSH_TOKEN;
-
-    if (!myToken) {
-      alert("Error: Native Token nahi mila!");
-      setIsPinging(false);
-      return;
-    }
-
     try {
-      await fetch('https://exp.host/--/api/v2/push/send', {
-        method: 'POST',
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          to: myToken,
-          title: "System Test",
-          body: "Native Push is ALIVE!",
-          priority: 'high',
-          sound: 'default'
-        }),
+      // Calls YOUR Netlify backend route!
+      await fetch("/api/ping", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        // Sender name bhej rahe hain taaki backend ko pata chale target kaun hai
+        body: JSON.stringify({ sender: currentUser.name }), 
       });
-      setTimeout(() => setIsPinging(false), 2000);
+      
+      // Prevent button spam for 3 seconds
+      setTimeout(() => setIsPinging(false), 3000);
     } catch (error) {
-      console.error(error);
+      console.error("Ping trigger failed:", error);
       setIsPinging(false);
     }
   };
@@ -337,10 +316,23 @@ export default function Home() {
         </div>
         
         <div className="flex items-center gap-2">
-          <button onClick={handlePingPartner} disabled={isPinging} className={`flex items-center gap-1.5 text-[10px] sm:text-xs px-2 py-1.5 rounded transition-colors border ${isPinging ? "bg-[#21262d] text-slate-500 border-[#30363d] cursor-not-allowed" : "bg-emerald-900/10 text-emerald-500 border-emerald-900/30 hover:bg-emerald-900/30"}`}>
+          <button 
+            type="button"
+            onClick={handlePingPartner} 
+            disabled={isPinging} 
+            onMouseDown={(e) => e.preventDefault()}
+            onTouchStart={(e) => e.preventDefault()}
+            className={`flex items-center gap-1.5 text-[10px] sm:text-xs px-2 py-1.5 rounded transition-colors border ${isPinging ? "bg-[#21262d] text-slate-500 border-[#30363d] cursor-not-allowed" : "bg-emerald-900/10 text-emerald-500 border-emerald-900/30 hover:bg-emerald-900/30"}`}
+          >
             <Bell size={12} className={isPinging ? "" : "animate-bounce"} /> {isPinging ? "Signal Sent" : "Ping Node"}
           </button>
-          <button onClick={() => setAppState("DECOY")} className="flex items-center gap-1.5 text-[10px] sm:text-xs bg-rose-900/10 text-rose-500 hover:bg-rose-900/30 border border-rose-900/30 px-2 py-1.5 rounded">
+          <button 
+            type="button"
+            onClick={() => setAppState("DECOY")} 
+            onMouseDown={(e) => e.preventDefault()}
+            onTouchStart={(e) => e.preventDefault()}
+            className="flex items-center gap-1.5 text-[10px] sm:text-xs bg-rose-900/10 text-rose-500 hover:bg-rose-900/30 border border-rose-900/30 px-2 py-1.5 rounded"
+          >
             <LogOut size={12} /> Exit
           </button>
         </div>
@@ -391,7 +383,13 @@ export default function Home() {
 
       <div className="w-full bg-[#0d1117] border-t border-[#30363d] p-2 z-20 shrink-0">
         <div className="max-w-full mx-auto flex gap-2 items-center bg-[#0d1117] px-1">
-          <button type="button" onClick={() => setShowEmojis(!showEmojis)} className="p-1.5 text-[#8b949e] hover:text-[#58a6ff]">
+          <button 
+            type="button" 
+            onClick={() => setShowEmojis(!showEmojis)} 
+            onMouseDown={(e) => e.preventDefault()}
+            onTouchStart={(e) => e.preventDefault()}
+            className="p-1.5 text-[#8b949e] hover:text-[#58a6ff]"
+          >
             <Smile size={18} />
           </button>
           

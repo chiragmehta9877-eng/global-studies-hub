@@ -1,17 +1,29 @@
 import { NextResponse } from "next/server";
-
-// Development ke liye in-memory variable (Production me MongoDB use karna padega)
-global.pushSubscriptions = global.pushSubscriptions || {};
+import mongoose from "mongoose";
+import PushToken from "../../../../models/PushToken"; // Apna path verify kar lena
 
 export async function POST(req) {
   try {
-    const { subscription, username } = await req.json();
+    if (!mongoose.connections[0].readyState) {
+      await mongoose.connect(process.env.MONGODB_URI, { family: 4 });
+    }
     
-    // User ke naam pe subscription object save kar lo
-    global.pushSubscriptions[username] = subscription;
-    
-    return NextResponse.json({ success: true });
+    const { subscription, username } = await req.json(); // subscription hi hamara Expo Token hai
+
+    if (!subscription || !username) {
+      return NextResponse.json({ success: false, error: "Missing data" });
+    }
+
+    // Token DB mein save ya update (Upsert) kar do
+    await PushToken.findOneAndUpdate(
+      { username: username },
+      { token: subscription },
+      { upsert: true, new: true }
+    );
+
+    return NextResponse.json({ success: true, message: "Token permanently saved to DB" });
   } catch (error) {
-    return NextResponse.json({ error: "Subscription failed" }, { status: 500 });
+    console.error("DB Error:", error);
+    return NextResponse.json({ success: false, error: "Server Error" });
   }
 }
