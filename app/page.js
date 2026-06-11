@@ -46,7 +46,7 @@ export default function Home() {
 
   const [expandedImage, setExpandedImage] = useState(null);
   
-  const bottomRef = useRef(null);
+  const chatContainerRef = useRef(null); // FIX: New ref for stable mobile scrolling
   const inputRef = useRef(null);
   const cameraInputRef = useRef(null); 
   const galleryInputRef = useRef(null); 
@@ -75,7 +75,6 @@ export default function Home() {
     }
   };
 
-  // BUG FIX: Master Logout & Cleanup Function
   const handleLogout = () => {
     setAppState("DECOY");
     setStudentId("");
@@ -92,7 +91,7 @@ export default function Home() {
     clearTimeout(peerTimeout.current);
     clearTimeout(typingTimeout.current);
   };
-/*
+
   useEffect(() => {
     const handlePanicHide = () => {
       if (document.visibilityState === "hidden") {
@@ -104,7 +103,7 @@ export default function Home() {
       document.removeEventListener("visibilitychange", handlePanicHide);
     };
   }, []);
-*/
+
   // --- 15 SEC DISAPPEAR & CLOUDINARY NUKE PROTOCOL ---
   useEffect(() => {
     if (appState !== "CHAT") return;
@@ -227,7 +226,6 @@ export default function Home() {
   useEffect(() => {
     if (appState !== "CHAT" || !currentUser || !activeChannel) return;
     
-    // Safety Net: Ensure clean state when newly connecting to a channel
     setIsPeerActive(false);
     setIsPeerTyping(false);
 
@@ -309,7 +307,17 @@ export default function Home() {
     };
   }, [appState, currentUser, activeChannel]);
 
-  const scrollToBottom = () => setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" }), 50);
+  // FIX: Scroll logic updated for better mobile layout stability
+  const scrollToBottom = () => {
+    setTimeout(() => {
+      if (chatContainerRef.current) {
+        chatContainerRef.current.scrollTo({
+          top: chatContainerRef.current.scrollHeight,
+          behavior: "smooth",
+        });
+      }
+    }, 50);
+  };
 
   useEffect(() => {
     if (messages.length > prevMsgCount.current) scrollToBottom();
@@ -342,7 +350,8 @@ export default function Home() {
     dispatchMessage(input);
     setInput("");
     setShowEmojis(false);
-    inputRef.current?.focus();
+    // Focus optional, but safe now due to the new fixed layout
+    inputRef.current?.focus(); 
   };
 
   const handleInputChange = (e) => {
@@ -392,7 +401,12 @@ export default function Home() {
   const handlePingPartner = async () => {
     setIsPinging(true);
     try {
-      await fetch("/api/ping", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sender: currentUser.name }) });
+      await fetch("/api/ping", { 
+        method: "POST", 
+        headers: { "Content-Type": "application/json" }, 
+        // FIX: Now explicitly sends 'receiver' so the backend notifies the partner, not the sender
+        body: JSON.stringify({ sender: currentUser.name, receiver: targetNode, channel: activeChannel }) 
+      });
       setTimeout(() => setIsPinging(false), 3000);
     } catch (error) { setIsPinging(false); }
   };
@@ -451,11 +465,12 @@ export default function Home() {
   );
 
   return (
-    <div className="h-[100dvh] bg-[#f4f5f9] font-sans flex flex-col overflow-hidden text-slate-800 relative">
+    // FIX: Replaced `h-[100dvh]` with `fixed inset-0` to lock layout on mobile and prevent body scroll
+    <div className="fixed inset-0 bg-[#f4f5f9] font-sans flex flex-col overflow-hidden text-slate-800">
       <input type="file" accept="image/*" capture="camera" ref={cameraInputRef} className="hidden" onChange={handleImageUpload} />
       <input type="file" accept="image/*" ref={galleryInputRef} className="hidden" onChange={handleImageUpload} />
 
-      {/* HEADER - Updated LogOut functionality */}
+      {/* HEADER */}
       <div className="bg-white border-b border-slate-100 px-4 py-3 flex justify-between items-center z-20 shadow-sm shrink-0">
         <div className="flex items-center gap-3">
           <div className="w-11 h-11 rounded-full bg-slate-100 border-2 border-white flex items-center justify-center relative shadow-sm overflow-hidden">
@@ -471,15 +486,15 @@ export default function Home() {
           <button type="button" onClick={handlePingPartner} disabled={isPinging} className={`p-2 rounded-full transition-colors ${isPinging ? "bg-slate-100 text-slate-400" : "bg-indigo-50 text-indigo-500 hover:bg-indigo-100"}`}>
             <Bell size={18} className={isPinging ? "" : "animate-bounce"} />
           </button>
-          {/* LOGOUT BUTTON MAPPED TO NEW CLEANUP FUNCTION */}
           <button type="button" onClick={handleLogout} className="p-2 bg-rose-50 text-rose-500 hover:bg-rose-100 rounded-full transition-colors">
             <LogOut size={18} />
           </button>
         </div>
       </div>
 
-      {/* CHAT MESSAGES AREA */}
+      {/* CHAT MESSAGES AREA - Added ref for smooth internal scrolling */}
       <div 
+        ref={chatContainerRef}
         className="flex-1 overflow-y-auto p-4 space-y-4 z-10 scrollbar-hide relative will-change-scroll"
         style={{
           backgroundColor: "#f4f5f9",
@@ -519,7 +534,7 @@ export default function Home() {
             </motion.div>
           )})}
         </AnimatePresence>
-        <div ref={bottomRef} className="h-4" />
+        <div className="h-4" />
       </div>
 
       {/* FULLSCREEN IMAGE MODAL */}
