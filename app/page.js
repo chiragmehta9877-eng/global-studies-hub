@@ -46,7 +46,7 @@ export default function Home() {
 
   const [expandedImage, setExpandedImage] = useState(null);
   
-  const chatContainerRef = useRef(null); // FIX: New ref for stable mobile scrolling
+  const chatContainerRef = useRef(null); 
   const inputRef = useRef(null);
   const cameraInputRef = useRef(null); 
   const galleryInputRef = useRef(null); 
@@ -233,12 +233,13 @@ export default function Home() {
     const channel = pusher.subscribe(activeChannel);
     
     channel.bind("receive_message", async (data) => {
+      // Prevents self-loop issues
       if (String(data.senderId).trim().toLowerCase() === String(currentUser.name).trim().toLowerCase()) return;
 
       try {
         const bytes = CryptoJS.AES.decrypt(data.encryptedText, SECRET_KEY);
         const text = bytes.toString(CryptoJS.enc.Utf8);
-        
+
         if (text === "SYS_PING_ACTIVE") {
           setIsPeerActive(true);
           clearTimeout(peerTimeout.current);
@@ -307,14 +308,11 @@ export default function Home() {
     };
   }, [appState, currentUser, activeChannel]);
 
-  // FIX: Scroll logic updated for better mobile layout stability
+  // SCROLL FIX
   const scrollToBottom = () => {
     setTimeout(() => {
       if (chatContainerRef.current) {
-        chatContainerRef.current.scrollTo({
-          top: chatContainerRef.current.scrollHeight,
-          behavior: "smooth",
-        });
+        chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
       }
     }, 50);
   };
@@ -350,7 +348,6 @@ export default function Home() {
     dispatchMessage(input);
     setInput("");
     setShowEmojis(false);
-    // Focus optional, but safe now due to the new fixed layout
     inputRef.current?.focus(); 
   };
 
@@ -398,13 +395,14 @@ export default function Home() {
     }
   };
 
+  // 100% FIXED PING LOGIC - Relies entirely on your Backend Web Push Service
   const handlePingPartner = async () => {
     setIsPinging(true);
     try {
       await fetch("/api/ping", { 
         method: "POST", 
         headers: { "Content-Type": "application/json" }, 
-        // FIX: Now explicitly sends 'receiver' so the backend notifies the partner, not the sender
+        // Sending exact receiver so Backend knows who to notify (Student B to Student A, and vice versa)
         body: JSON.stringify({ sender: currentUser.name, receiver: targetNode, channel: activeChannel }) 
       });
       setTimeout(() => setIsPinging(false), 3000);
@@ -450,10 +448,10 @@ export default function Home() {
         <p className="text-sm text-slate-500 mb-8">Access restricted academic modules</p>
         <form onSubmit={handleLogin} className="space-y-4 text-left">
           <div>
-            <input type="text" autoComplete="off" placeholder="University ID" className="w-full bg-slate-50 border border-slate-200 p-4 rounded-xl text-sm focus:border-blue-500 outline-none transition" onChange={(e) => setStudentId(e.target.value)} />
+            <input type="text" autoComplete="off" placeholder="University ID" className="w-full bg-slate-50 border border-slate-200 p-4 rounded-xl text-[16px] focus:border-blue-500 outline-none transition" onChange={(e) => setStudentId(e.target.value)} />
           </div>
           <div>
-            <input type="password" autoComplete="new-password" placeholder="Access PIN" className="w-full bg-slate-50 border border-slate-200 p-4 rounded-xl text-sm focus:border-blue-500 outline-none transition" onChange={(e) => setPassword(e.target.value)} />
+            <input type="password" autoComplete="new-password" placeholder="Access PIN" className="w-full bg-slate-50 border border-slate-200 p-4 rounded-xl text-[16px] focus:border-blue-500 outline-none transition" onChange={(e) => setPassword(e.target.value)} />
           </div>
           {error && <p className="text-rose-500 text-xs font-medium bg-rose-50 p-3 rounded-lg">{error}</p>}
           <button type="submit" disabled={isLoggingIn} className={`w-full text-white font-semibold py-4 rounded-xl text-sm mt-2 transition-colors shadow-lg ${isLoggingIn ? "bg-blue-400 shadow-blue-400/30 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700 shadow-blue-600/30"}`}>
@@ -465,8 +463,11 @@ export default function Home() {
   );
 
   return (
-    // FIX: Replaced `h-[100dvh]` with `fixed inset-0` to lock layout on mobile and prevent body scroll
-    <div className="fixed inset-0 bg-[#f4f5f9] font-sans flex flex-col overflow-hidden text-slate-800">
+    // HEADER & SCROLL LOCK FIX - Keeps header perfectly on top even when keyboard opens!
+    <div 
+      className="font-sans text-slate-800"
+      style={{ position: 'fixed', top: 0, bottom: 0, left: 0, right: 0, display: 'flex', flexDirection: 'column', backgroundColor: '#f4f5f9', overflow: 'hidden' }}
+    >
       <input type="file" accept="image/*" capture="camera" ref={cameraInputRef} className="hidden" onChange={handleImageUpload} />
       <input type="file" accept="image/*" ref={galleryInputRef} className="hidden" onChange={handleImageUpload} />
 
@@ -492,12 +493,11 @@ export default function Home() {
         </div>
       </div>
 
-      {/* CHAT MESSAGES AREA - Added ref for smooth internal scrolling */}
+      {/* CHAT MESSAGES AREA */}
       <div 
         ref={chatContainerRef}
         className="flex-1 overflow-y-auto p-4 space-y-4 z-10 scrollbar-hide relative will-change-scroll"
         style={{
-          backgroundColor: "#f4f5f9",
           backgroundImage: `url("data:image/svg+xml,%3Csvg width='180' height='180' viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23d0d5df' fill-opacity='0.4' font-family='sans-serif'%3E%3Ctext x='20' y='30' font-size='16'%3E%F0%9F%98%BA%3C/text%3E%3Ctext x='80' y='80' font-size='12'%3E%E2%99%A1%3C/text%3E%3Ctext x='140' y='40' font-size='14'%3E%E2%98%86%3C/text%3E%3Ctext x='30' y='120' font-size='16'%3E%E2%98%BA%3C/text%3E%3Ctext x='110' y='150' font-size='12'%3E%E2%9C%A8%3C/text%3E%3Ctext x='160' y='110' font-size='14'%3E%E2%99%A1%3C/text%3E%3Ctext x='80' y='10' font-size='10'%3E%E2%98%BA%3C/text%3E%3Ctext x='10' y='80' font-size='10'%3E%E2%9C%A8%3C/text%3E%3C/g%3E%3C/svg%3E")`,
           backgroundSize: "180px 180px"
         }}
@@ -602,7 +602,7 @@ export default function Home() {
                 ref={inputRef} type="text" value={input} 
                 onChange={handleInputChange} 
                 onFocus={() => setTimeout(scrollToBottom, 300)} 
-                className="flex-1 bg-transparent border-none text-slate-700 text-[15px] outline-none placeholder-slate-400 h-full" 
+                className="flex-1 bg-transparent border-none text-slate-700 text-[16px] outline-none placeholder-slate-400 h-full" 
                 placeholder={isUploading ? "Sending photo..." : "Message..."} 
                 autoComplete="off" 
                 disabled={isUploading}
