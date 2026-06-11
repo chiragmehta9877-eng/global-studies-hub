@@ -520,25 +520,28 @@ export default function Home() {
   // ==========================================
   // BASE64 MOBILE DOWNLOAD FIX (WebView Bypass)
   // ==========================================
-  const downloadImage = async (url) => {
+ const downloadImage = async (url) => {
     try {
+      // 1. Photo ko background mein fetch karo
       const response = await fetch(url);
       const blob = await response.blob();
       
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const base64data = reader.result;
-        
-        const link = document.createElement('a');
-        link.href = base64data;
-        link.download = `Stealth_${Date.now()}.jpg`; 
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-      };
-      reader.readAsDataURL(blob);
+      // 2. Us blob ko ek real "File" mein convert karo
+      const file = new File([blob], `Stealth_${Date.now()}.jpg`, { type: blob.type });
+
+      // 3. Check karo ki phone Native Share (Save to Gallery) support karta hai ya nahi
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          files: [file],
+          title: 'Stealth Photo',
+        });
+      } else {
+        // 4. Fallback: Agar share menu na khule, toh direct photo khol do (tu Long-Press karke save kar payega)
+        window.location.href = url;
+      }
     } catch (error) {
-      window.open(url, "_blank");
+      console.log("Download failed, opening fallback");
+      window.location.href = url;
     }
   };
 
