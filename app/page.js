@@ -121,7 +121,7 @@ export default function Home() {
   };
 
   // ==========================================
-  // PANIC PROTOCOL: INSTANT OS SNAPSHOT BLACKOUT
+  // PANIC PROTOCOL 1: BACK BUTTON INTERCEPTOR
   // ==========================================
   useEffect(() => {
     if (appState === "CHAT") {
@@ -132,12 +132,16 @@ export default function Home() {
     }
   }, [appState]);
 
+  // ==========================================
+  // PANIC PROTOCOL 2: THE FLAWLESS BYPASS LOGIC
+  // ==========================================
   useEffect(() => {
-    const handlePanicHide = () => {
-      if (ignorePanicRef.current) return; 
-      
-      if (document.hidden || document.visibilityState === "hidden") {
-        // INSTANT BLACKOUT: Beats the OS snapshot camera by injecting a DOM element synchronously
+    const handleVisibilityChange = () => {
+      // Jab app hide/minimize ho rahi ho
+      if (document.visibilityState === "hidden") {
+        if (ignorePanicRef.current) return; // Agar camera open ho raha hai, toh ignore karo aur chat me raho!
+
+        // Normal minimize par Blackout & Logout
         const blackout = document.createElement('div');
         blackout.id = 'stealth-blackout';
         blackout.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:100vh;background:#09090b;z-index:9999999;';
@@ -145,32 +149,40 @@ export default function Home() {
         
         handleLogout();
         
-        // Remove blackout after 500ms (when user opens app again, Decoy will be ready)
         setTimeout(() => {
           const el = document.getElementById('stealth-blackout');
           if (el) el.remove();
         }, 500);
+      } 
+      // Jab user camera se wapas app me aaye
+      else if (document.visibilityState === "visible") {
+        if (ignorePanicRef.current) {
+          // Camera use karne ke baad Panic mode ko wapas ON karne ke liye thoda wait karo
+          setTimeout(() => { ignorePanicRef.current = false; }, 1500);
+        }
       }
     };
 
-    // 'pagehide' triggers faster than visibilitychange on some mobile devices
-    window.addEventListener("pagehide", handlePanicHide);
-    document.addEventListener("visibilitychange", handlePanicHide);
-    
-    return () => {
-      window.removeEventListener("pagehide", handlePanicHide);
-      document.removeEventListener("visibilitychange", handlePanicHide);
+    const handleBlur = () => {
+      if (ignorePanicRef.current) return;
+      handleLogout();
     };
-  }, []);
 
-  useEffect(() => {
-    const handleWindowFocus = () => {
+    const handleFocus = () => {
       if (ignorePanicRef.current) {
-        setTimeout(() => { ignorePanicRef.current = false; }, 800);
+        setTimeout(() => { ignorePanicRef.current = false; }, 1500);
       }
     };
-    window.addEventListener("focus", handleWindowFocus);
-    return () => window.removeEventListener("focus", handleWindowFocus);
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("blur", handleBlur);
+    window.addEventListener("focus", handleFocus);
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("blur", handleBlur);
+      window.removeEventListener("focus", handleFocus);
+    };
   }, []);
 
   // --- 15 SEC DISAPPEAR & CLOUDINARY NUKE PROTOCOL ---
@@ -506,24 +518,33 @@ export default function Home() {
   };
 
   // ==========================================
-  // PERFECT MOBILE DOWNLOAD FIX (Cloudinary Magic)
+  // BASE64 MOBILE DOWNLOAD FIX (WebView Bypass)
   // ==========================================
-  const downloadImage = (url) => {
+  const downloadImage = async (url) => {
     try {
-      // By adding fl_attachment to Cloudinary URL, the OS is forced to download the file directly to the gallery!
-      const downloadUrl = url.replace("/upload/", "/upload/fl_attachment/");
+      const response = await fetch(url);
+      const blob = await response.blob();
       
-      const link = document.createElement('a');
-      link.href = downloadUrl;
-      link.setAttribute("target", "_blank");
-      link.setAttribute("download", `Stealth_${Date.now()}.jpg`);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64data = reader.result;
+        
+        const link = document.createElement('a');
+        link.href = base64data;
+        link.download = `Stealth_${Date.now()}.jpg`; 
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      };
+      reader.readAsDataURL(blob);
     } catch (error) {
-      window.open(url, "_blank"); // Fallback
+      window.open(url, "_blank");
     }
   };
+
+  // ==========================================
+  // RENDER VIEWS (DARK & LIGHT MODE STYLED)
+  // ==========================================
 
   const bgPatternDark = `url("data:image/svg+xml,%3Csvg width='180' height='180' viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%233f3f46' fill-opacity='0.2' font-family='sans-serif'%3E%3Ctext x='20' y='30' font-size='16'%3E%F0%9F%98%BA%3C/text%3E%3Ctext x='80' y='80' font-size='12'%3E%E2%99%A1%3C/text%3E%3Ctext x='140' y='40' font-size='14'%3E%E2%98%86%3C/text%3E%3Ctext x='30' y='120' font-size='16'%3E%E2%98%BA%3C/text%3E%3Ctext x='110' y='150' font-size='12'%3E%E2%9C%A8%3C/text%3E%3Ctext x='160' y='110' font-size='14'%3E%E2%99%A1%3C/text%3E%3Ctext x='80' y='10' font-size='10'%3E%E2%98%BA%3C/text%3E%3Ctext x='10' y='80' font-size='10'%3E%E2%9C%A8%3C/text%3E%3C/g%3E%3C/svg%3E")`;
   const bgPatternLight = `url("data:image/svg+xml,%3Csvg width='180' height='180' viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23d0d5df' fill-opacity='0.4' font-family='sans-serif'%3E%3Ctext x='20' y='30' font-size='16'%3E%F0%9F%98%BA%3C/text%3E%3Ctext x='80' y='80' font-size='12'%3E%E2%99%A1%3C/text%3E%3Ctext x='140' y='40' font-size='14'%3E%E2%98%86%3C/text%3E%3Ctext x='30' y='120' font-size='16'%3E%E2%98%BA%3C/text%3E%3Ctext x='110' y='150' font-size='12'%3E%E2%9C%A8%3C/text%3E%3Ctext x='160' y='110' font-size='14'%3E%E2%99%A1%3C/text%3E%3Ctext x='80' y='10' font-size='10'%3E%E2%98%BA%3C/text%3E%3Ctext x='10' y='80' font-size='10'%3E%E2%9C%A8%3C/text%3E%3C/g%3E%3C/svg%3E")`;
@@ -562,6 +583,7 @@ export default function Home() {
       <input type="file" accept="image/*" capture="camera" ref={cameraInputRef} className="hidden" onChange={handleImageUpload} />
       <input type="file" accept="image/*" ref={galleryInputRef} className="hidden" onChange={handleImageUpload} />
 
+      {/* HEADER */}
       <div className={`px-4 py-3 flex justify-between items-center z-20 shadow-sm shrink-0 transition-colors duration-300 border-b ${isDarkMode ? "bg-[#18181b] border-[#27272a]" : "bg-white border-slate-100"}`}>
         <div className="flex items-center gap-3">
           <div className={`w-11 h-11 rounded-full border-2 flex items-center justify-center relative shadow-sm overflow-hidden ${isDarkMode ? "bg-[#27272a] border-[#09090b]" : "bg-slate-100 border-white"}`}>
@@ -586,6 +608,7 @@ export default function Home() {
         </div>
       </div>
 
+      {/* CHAT AREA */}
       <div 
         ref={chatContainerRef}
         className="flex-1 overflow-y-auto p-4 space-y-4 z-10 scrollbar-hide relative will-change-scroll w-full"
@@ -633,16 +656,27 @@ export default function Home() {
         <div className="h-4" />
       </div>
 
+      {/* FIXED FULLSCREEN IMAGE MODAL WITH FLOATING BUTTONS */}
       <AnimatePresence>
         {expandedImage && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 p-4 will-change-transform" onClick={() => setExpandedImage(null)}>
-            <button className="absolute top-6 right-20 p-2.5 bg-white/10 text-white rounded-full hover:bg-white/20 transition" onClick={(e) => { e.stopPropagation(); downloadImage(expandedImage); }}><Download size={20} /></button>
-            <button className="absolute top-6 right-6 p-2.5 bg-white/10 text-white rounded-full hover:bg-white/20 transition" onClick={() => setExpandedImage(null)}><X size={20} /></button>
+            
+            {/* FLOATING HIGH Z-INDEX BUTTONS */}
+            <div className="absolute top-8 right-4 flex items-center gap-3 z-[9999]" onClick={(e) => e.stopPropagation()}>
+              <button className="p-3 bg-black/60 backdrop-blur-md text-white rounded-full hover:bg-white/20 transition shadow-lg border border-white/10" onClick={(e) => { e.stopPropagation(); downloadImage(expandedImage); }}>
+                <Download size={22} />
+              </button>
+              <button className="p-3 bg-black/60 backdrop-blur-md text-white rounded-full hover:bg-white/20 transition shadow-lg border border-white/10" onClick={() => setExpandedImage(null)}>
+                <X size={22} />
+              </button>
+            </div>
+
             <motion.img initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, opacity: 0 }} src={expandedImage} alt="Photo View" className="max-w-full max-h-full object-contain rounded-2xl shadow-2xl will-change-transform" onClick={(e) => e.stopPropagation()} />
           </motion.div>
         )}
       </AnimatePresence>
 
+      {/* 3D PEEKING CAT (SHRUNK TO 25% SMALLER) */}
       <div className="absolute bottom-[72px] left-4 z-10 pointer-events-none flex flex-col items-center">
         <AnimatePresence>
           {isPeerActive && (
@@ -684,6 +718,7 @@ export default function Home() {
         </div>
       )}
 
+      {/* INPUT BAR */}
       <div 
         className={`w-full p-3 z-20 shrink-0 border-t transition-colors duration-300 ${isDarkMode ? "bg-[#09090b] border-[#27272a]" : "bg-[#f4f5f9] border-slate-200"}`}
         style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}
