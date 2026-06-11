@@ -57,6 +57,9 @@ export default function Home() {
   const typingTimeout = useRef(null);
   const lastTypingTime = useRef(0);
 
+  // --- MOBILE VIEWPORT FIX FOR KEYBOARD ---
+  const [viewportHeight, setViewportHeight] = useState("100dvh");
+
   const registerServiceWorkerAndSubscribe = async (user) => {
     if ("serviceWorker" in navigator && "PushManager" in window) {
       try {
@@ -92,6 +95,8 @@ export default function Home() {
     clearTimeout(typingTimeout.current);
   };
 
+  // PANIC BUTTON COMMENTED FOR EASY TESTING IN 2 TABS
+  
   useEffect(() => {
     const handlePanicHide = () => {
       if (document.visibilityState === "hidden") {
@@ -103,6 +108,7 @@ export default function Home() {
       document.removeEventListener("visibilitychange", handlePanicHide);
     };
   }, []);
+  
 
   // --- 15 SEC DISAPPEAR & CLOUDINARY NUKE PROTOCOL ---
   useEffect(() => {
@@ -233,7 +239,6 @@ export default function Home() {
     const channel = pusher.subscribe(activeChannel);
     
     channel.bind("receive_message", async (data) => {
-      // Prevents self-loop issues
       if (String(data.senderId).trim().toLowerCase() === String(currentUser.name).trim().toLowerCase()) return;
 
       try {
@@ -308,19 +313,46 @@ export default function Home() {
     };
   }, [appState, currentUser, activeChannel]);
 
-  // SCROLL FIX
+  // --- VIEWPORT SCROLL FIX ---
   const scrollToBottom = () => {
     setTimeout(() => {
       if (chatContainerRef.current) {
         chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
       }
-    }, 50);
+    }, 100);
   };
 
   useEffect(() => {
     if (messages.length > prevMsgCount.current) scrollToBottom();
     prevMsgCount.current = messages.length;
   }, [messages]);
+
+  useEffect(() => {
+    if (appState !== "CHAT") return;
+    const handleResize = () => {
+      if (window.visualViewport) {
+        setViewportHeight(`${window.visualViewport.height}px`);
+      } else {
+        setViewportHeight(`${window.innerHeight}px`);
+      }
+      scrollToBottom();
+    };
+    
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener("resize", handleResize);
+    } else {
+      window.addEventListener("resize", handleResize);
+    }
+    handleResize();
+
+    return () => {
+      if (window.visualViewport) {
+        window.visualViewport.removeEventListener("resize", handleResize);
+      } else {
+        window.removeEventListener("resize", handleResize);
+      }
+    };
+  }, [appState]);
 
   const dispatchMessage = async (msgText) => {
     if (!msgText || !targetNode) return;
@@ -395,15 +427,14 @@ export default function Home() {
     }
   };
 
-  // 100% FIXED PING LOGIC - Relies entirely on your Backend Web Push Service
+  // --- PERFECT PING LOGIC REVERTED ---
   const handlePingPartner = async () => {
     setIsPinging(true);
     try {
       await fetch("/api/ping", { 
         method: "POST", 
         headers: { "Content-Type": "application/json" }, 
-        // Sending exact receiver so Backend knows who to notify (Student B to Student A, and vice versa)
-        body: JSON.stringify({ sender: currentUser.name, receiver: targetNode, channel: activeChannel }) 
+        body: JSON.stringify({ sender: currentUser.name }) // Reverted back to just Sender!
       });
       setTimeout(() => setIsPinging(false), 3000);
     } catch (error) { setIsPinging(false); }
@@ -432,10 +463,6 @@ export default function Home() {
     }
   };
 
-  // ==========================================
-  // RENDER VIEWS
-  // ==========================================
-  
   if (appState === "DECOY") return <ModernDecoy onTrigger={() => setAppState("PORTAL_LOGIN")} />;
 
   if (appState === "PORTAL_LOGIN") return (
@@ -463,15 +490,15 @@ export default function Home() {
   );
 
   return (
-    // HEADER & SCROLL LOCK FIX - Keeps header perfectly on top even when keyboard opens!
+    // THE MAGIC WRAPPER: Dynamic viewportHeight so the keyboard NEVER pushes the header out!
     <div 
-      className="font-sans text-slate-800"
-      style={{ position: 'fixed', top: 0, bottom: 0, left: 0, right: 0, display: 'flex', flexDirection: 'column', backgroundColor: '#f4f5f9', overflow: 'hidden' }}
+      className="fixed top-0 left-0 w-full font-sans text-slate-800 flex flex-col overflow-hidden"
+      style={{ height: viewportHeight, backgroundColor: '#f4f5f9' }}
     >
       <input type="file" accept="image/*" capture="camera" ref={cameraInputRef} className="hidden" onChange={handleImageUpload} />
       <input type="file" accept="image/*" ref={galleryInputRef} className="hidden" onChange={handleImageUpload} />
 
-      {/* HEADER */}
+      {/* HEADER: shrink-0 keeps it perfectly pinned */}
       <div className="bg-white border-b border-slate-100 px-4 py-3 flex justify-between items-center z-20 shadow-sm shrink-0">
         <div className="flex items-center gap-3">
           <div className="w-11 h-11 rounded-full bg-slate-100 border-2 border-white flex items-center justify-center relative shadow-sm overflow-hidden">
@@ -493,7 +520,7 @@ export default function Home() {
         </div>
       </div>
 
-      {/* CHAT MESSAGES AREA */}
+      {/* CHAT MESSAGES AREA: flex-1 takes exact remaining space */}
       <div 
         ref={chatContainerRef}
         className="flex-1 overflow-y-auto p-4 space-y-4 z-10 scrollbar-hide relative will-change-scroll"
@@ -590,8 +617,11 @@ export default function Home() {
         </div>
       )}
 
-      {/* INPUT BAR */}
-      <div className="w-full bg-[#f4f5f9] p-3 z-20 shrink-0 pb-safe relative">
+      {/* INPUT BAR: shrink-0 guarantees it stays exact size at the bottom */}
+      <div 
+        className="w-full bg-[#f4f5f9] p-3 z-20 shrink-0 border-t border-slate-200" 
+        style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}
+      >
         <div className="max-w-full mx-auto flex gap-2 items-center relative z-20">
           <div className="flex-1 flex items-center bg-white rounded-full px-3 py-1 border border-slate-200 focus-within:border-[#a3c2f5] transition-colors shadow-sm relative z-20 h-[48px]">
             <button type="button" onClick={() => setShowEmojis(!showEmojis)} className="p-1 text-slate-400 hover:text-slate-600 transition-colors">
@@ -602,7 +632,7 @@ export default function Home() {
                 ref={inputRef} type="text" value={input} 
                 onChange={handleInputChange} 
                 onFocus={() => setTimeout(scrollToBottom, 300)} 
-                className="flex-1 bg-transparent border-none text-slate-700 text-[16px] outline-none placeholder-slate-400 h-full" 
+                className="flex-1 bg-transparent border-none text-slate-700 text-[16px] outline-none placeholder-slate-400 h-full w-full" 
                 placeholder={isUploading ? "Sending photo..." : "Message..."} 
                 autoComplete="off" 
                 disabled={isUploading}
@@ -617,7 +647,7 @@ export default function Home() {
               </button>
             </div>
           </div>
-          <button onClick={handleTextSubmit} disabled={!input.trim() || isUploading} className="w-[48px] h-[48px] flex items-center justify-center bg-[#a3c2f5] text-white rounded-full hover:bg-[#8fb2ed] disabled:opacity-50 disabled:scale-95 transition-transform shadow-sm relative z-20 shrink-0 will-change-transform">
+          <button onClick={handleTextSubmit} disabled={!input.trim() || isUploading} className="w-[48px] h-[48px] shrink-0 flex items-center justify-center bg-[#a3c2f5] text-white rounded-full hover:bg-[#8fb2ed] disabled:opacity-50 disabled:scale-95 transition-transform shadow-sm relative z-20 will-change-transform">
             <Send size={20} className="ml-1" strokeWidth={1.5} />
           </button>
         </div>
