@@ -3,7 +3,7 @@ import ModernDecoy from "./components/DecoyPortal";
 import { useState, useEffect, useRef } from "react";
 import PusherJS from "pusher-js";
 import CryptoJS from "crypto-js";
-import { Send, Smile, LogOut, Lock, Bell, CheckCheck, Camera, Image as ImageIcon, Download, X, Sun, Moon } from "lucide-react";
+import { Send, Smile, LogOut, Lock, Bell, CheckCheck, Camera, Image as ImageIcon, X, Sun, Moon } from "lucide-react";
 import EmojiPicker from 'emoji-picker-react';
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -511,22 +511,8 @@ export default function Home() {
   };
 
   // ==========================================
-  // 100% NATIVE MOBILE OS DOWNLOAD FALLBACK
+  // RENDER VIEWS (DARK & LIGHT MODE STYLED)
   // ==========================================
-  const downloadImage = async (url) => {
-    try {
-      if (navigator.share) {
-        await navigator.share({
-          title: 'Stealth Photo',
-          url: url
-        });
-      } else {
-        window.location.href = url;
-      }
-    } catch (error) {
-      console.log("Share dialog closed or failed.");
-    }
-  };
 
   const bgPatternDark = `url("data:image/svg+xml,%3Csvg width='180' height='180' viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%233f3f46' fill-opacity='0.2' font-family='sans-serif'%3E%3Ctext x='20' y='30' font-size='16'%3E%F0%9F%98%BA%3C/text%3E%3Ctext x='80' y='80' font-size='12'%3E%E2%99%A1%3C/text%3E%3Ctext x='140' y='40' font-size='14'%3E%E2%98%86%3C/text%3E%3Ctext x='30' y='120' font-size='16'%3E%E2%98%BA%3C/text%3E%3Ctext x='110' y='150' font-size='12'%3E%E2%9C%A8%3C/text%3E%3Ctext x='160' y='110' font-size='14'%3E%E2%99%A1%3C/text%3E%3Ctext x='80' y='10' font-size='10'%3E%E2%98%BA%3C/text%3E%3Ctext x='10' y='80' font-size='10'%3E%E2%9C%A8%3C/text%3E%3C/g%3E%3C/svg%3E")`;
   const bgPatternLight = `url("data:image/svg+xml,%3Csvg width='180' height='180' viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23d0d5df' fill-opacity='0.4' font-family='sans-serif'%3E%3Ctext x='20' y='30' font-size='16'%3E%F0%9F%98%BA%3C/text%3E%3Ctext x='80' y='80' font-size='12'%3E%E2%99%A1%3C/text%3E%3Ctext x='140' y='40' font-size='14'%3E%E2%98%86%3C/text%3E%3Ctext x='30' y='120' font-size='16'%3E%E2%98%BA%3C/text%3E%3Ctext x='110' y='150' font-size='12'%3E%E2%9C%A8%3C/text%3E%3Ctext x='160' y='110' font-size='14'%3E%E2%99%A1%3C/text%3E%3Ctext x='80' y='10' font-size='10'%3E%E2%98%BA%3C/text%3E%3Ctext x='10' y='80' font-size='10'%3E%E2%9C%A8%3C/text%3E%3C/g%3E%3C/svg%3E")`;
@@ -636,35 +622,25 @@ export default function Home() {
         <div className="h-4" />
       </div>
 
+      {/* FIXED FULLSCREEN IMAGE MODAL WITH FLOATING CLOSE BUTTON ONLY */}
       <AnimatePresence>
         {expandedImage && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 p-4 will-change-transform" onClick={() => setExpandedImage(null)}>
             
             <div className="absolute top-8 right-4 flex items-center gap-3 z-[9999]" onClick={(e) => e.stopPropagation()}>
-              <button className="p-3 bg-black/60 backdrop-blur-md text-white rounded-full hover:bg-white/20 transition shadow-lg border border-white/10" onClick={(e) => { e.stopPropagation(); downloadImage(expandedImage); }}>
-                <Download size={22} />
-              </button>
               <button className="p-3 bg-black/60 backdrop-blur-md text-white rounded-full hover:bg-white/20 transition shadow-lg border border-white/10" onClick={() => setExpandedImage(null)}>
                 <X size={22} />
               </button>
             </div>
 
-            {/* CSS ADDED FOR LONG PRESS OS MENU ALLOWANCE */}
             <motion.img 
               initial={{ scale: 0.9, y: 20 }} 
               animate={{ scale: 1, y: 0 }} 
               exit={{ scale: 0.9, opacity: 0 }} 
               src={expandedImage} 
               alt="Photo View" 
-              className="max-w-full max-h-full object-contain rounded-2xl shadow-2xl will-change-transform" 
-              onClick={(e) => e.stopPropagation()} 
-              style={{ WebkitTouchCallout: 'default', WebkitUserSelect: 'auto', userSelect: 'auto' }}
+              className="max-w-full max-h-full object-contain rounded-2xl shadow-2xl will-change-transform pointer-events-none select-none" 
             />
-            
-            {/* VISUAL HINT FOR LONG PRESS */}
-            <span className="absolute bottom-10 text-white/60 text-xs bg-black/50 px-4 py-1.5 rounded-full pointer-events-none">
-              Long-press photo to save
-            </span>
 
           </motion.div>
         )}
