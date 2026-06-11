@@ -21,7 +21,6 @@ export default function Home() {
   const [error, setError] = useState("");
   const [isLoggingIn, setIsLoggingIn] = useState(false); 
   
-  // --- NEW: DARK MODE DEFAULT ---
   const [isDarkMode, setIsDarkMode] = useState(true);
   
   const [messages, setMessages] = useState([]);
@@ -51,10 +50,8 @@ export default function Home() {
   const typingTimeout = useRef(null);
   const lastTypingTime = useRef(0);
 
-  // --- SMART PANIC SWITCH ---
   const ignorePanicRef = useRef(false);
 
-  // --- MOBILE VIEWPORT FIX FOR KEYBOARD ---
   const [viewportHeight, setViewportHeight] = useState("100dvh");
 
   function urlBase64ToUint8Array(base64String) {
@@ -66,7 +63,6 @@ export default function Home() {
     return outputArray;
   }
 
-  // --- NATIVE EXPO TOKEN LISTENER ---
   const registerServiceWorkerAndSubscribe = async (user) => {
     const getExpoToken = () => {
       return new Promise((resolve) => {
@@ -124,7 +120,9 @@ export default function Home() {
     clearTimeout(typingTimeout.current);
   };
 
-  // --- PANIC PROTOCOL 1: BACK BUTTON INTERCEPTOR ---
+  // ==========================================
+  // PANIC PROTOCOL: INSTANT OS SNAPSHOT BLACKOUT
+  // ==========================================
   useEffect(() => {
     if (appState === "CHAT") {
       window.history.pushState(null, null, window.location.href);
@@ -134,23 +132,37 @@ export default function Home() {
     }
   }, [appState]);
 
-  // --- PANIC PROTOCOL 2: APP MINIMIZE ---
   useEffect(() => {
     const handlePanicHide = () => {
       if (ignorePanicRef.current) return; 
-      if (document.hidden || !document.hasFocus()) {
+      
+      if (document.hidden || document.visibilityState === "hidden") {
+        // INSTANT BLACKOUT: Beats the OS snapshot camera by injecting a DOM element synchronously
+        const blackout = document.createElement('div');
+        blackout.id = 'stealth-blackout';
+        blackout.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:100vh;background:#09090b;z-index:9999999;';
+        document.body.appendChild(blackout);
+        
         handleLogout();
+        
+        // Remove blackout after 500ms (when user opens app again, Decoy will be ready)
+        setTimeout(() => {
+          const el = document.getElementById('stealth-blackout');
+          if (el) el.remove();
+        }, 500);
       }
     };
+
+    // 'pagehide' triggers faster than visibilitychange on some mobile devices
+    window.addEventListener("pagehide", handlePanicHide);
     document.addEventListener("visibilitychange", handlePanicHide);
-    window.addEventListener("blur", handlePanicHide);
+    
     return () => {
+      window.removeEventListener("pagehide", handlePanicHide);
       document.removeEventListener("visibilitychange", handlePanicHide);
-      window.removeEventListener("blur", handlePanicHide);
     };
   }, []);
 
-  // Window Focus Reset for Camera Bypass
   useEffect(() => {
     const handleWindowFocus = () => {
       if (ignorePanicRef.current) {
@@ -493,32 +505,25 @@ export default function Home() {
     } catch (error) { setIsPinging(false); }
   };
 
-  const downloadImage = async (url) => {
+  // ==========================================
+  // PERFECT MOBILE DOWNLOAD FIX (Cloudinary Magic)
+  // ==========================================
+  const downloadImage = (url) => {
     try {
-      const response = await fetch(url);
-      const blob = await response.blob();
-      const blobUrl = window.URL.createObjectURL(blob);
+      // By adding fl_attachment to Cloudinary URL, the OS is forced to download the file directly to the gallery!
+      const downloadUrl = url.replace("/upload/", "/upload/fl_attachment/");
+      
       const link = document.createElement('a');
-      link.href = blobUrl;
-      link.download = `Photo_${Date.now()}.jpg`; 
+      link.href = downloadUrl;
+      link.setAttribute("target", "_blank");
+      link.setAttribute("download", `Stealth_${Date.now()}.jpg`);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      window.URL.revokeObjectURL(blobUrl);
     } catch (error) {
-      const link = document.createElement('a');
-      link.href = url;
-      link.target = '_blank';
-      link.download = `Photo_${Date.now()}.jpg`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      window.open(url, "_blank"); // Fallback
     }
   };
-
-  // ==========================================
-  // RENDER VIEWS (DARK & LIGHT MODE STYLED)
-  // ==========================================
 
   const bgPatternDark = `url("data:image/svg+xml,%3Csvg width='180' height='180' viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%233f3f46' fill-opacity='0.2' font-family='sans-serif'%3E%3Ctext x='20' y='30' font-size='16'%3E%F0%9F%98%BA%3C/text%3E%3Ctext x='80' y='80' font-size='12'%3E%E2%99%A1%3C/text%3E%3Ctext x='140' y='40' font-size='14'%3E%E2%98%86%3C/text%3E%3Ctext x='30' y='120' font-size='16'%3E%E2%98%BA%3C/text%3E%3Ctext x='110' y='150' font-size='12'%3E%E2%9C%A8%3C/text%3E%3Ctext x='160' y='110' font-size='14'%3E%E2%99%A1%3C/text%3E%3Ctext x='80' y='10' font-size='10'%3E%E2%98%BA%3C/text%3E%3Ctext x='10' y='80' font-size='10'%3E%E2%9C%A8%3C/text%3E%3C/g%3E%3C/svg%3E")`;
   const bgPatternLight = `url("data:image/svg+xml,%3Csvg width='180' height='180' viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23d0d5df' fill-opacity='0.4' font-family='sans-serif'%3E%3Ctext x='20' y='30' font-size='16'%3E%F0%9F%98%BA%3C/text%3E%3Ctext x='80' y='80' font-size='12'%3E%E2%99%A1%3C/text%3E%3Ctext x='140' y='40' font-size='14'%3E%E2%98%86%3C/text%3E%3Ctext x='30' y='120' font-size='16'%3E%E2%98%BA%3C/text%3E%3Ctext x='110' y='150' font-size='12'%3E%E2%9C%A8%3C/text%3E%3Ctext x='160' y='110' font-size='14'%3E%E2%99%A1%3C/text%3E%3Ctext x='80' y='10' font-size='10'%3E%E2%98%BA%3C/text%3E%3Ctext x='10' y='80' font-size='10'%3E%E2%9C%A8%3C/text%3E%3C/g%3E%3C/svg%3E")`;
@@ -557,7 +562,6 @@ export default function Home() {
       <input type="file" accept="image/*" capture="camera" ref={cameraInputRef} className="hidden" onChange={handleImageUpload} />
       <input type="file" accept="image/*" ref={galleryInputRef} className="hidden" onChange={handleImageUpload} />
 
-      {/* HEADER */}
       <div className={`px-4 py-3 flex justify-between items-center z-20 shadow-sm shrink-0 transition-colors duration-300 border-b ${isDarkMode ? "bg-[#18181b] border-[#27272a]" : "bg-white border-slate-100"}`}>
         <div className="flex items-center gap-3">
           <div className={`w-11 h-11 rounded-full border-2 flex items-center justify-center relative shadow-sm overflow-hidden ${isDarkMode ? "bg-[#27272a] border-[#09090b]" : "bg-slate-100 border-white"}`}>
@@ -582,7 +586,6 @@ export default function Home() {
         </div>
       </div>
 
-      {/* CHAT AREA */}
       <div 
         ref={chatContainerRef}
         className="flex-1 overflow-y-auto p-4 space-y-4 z-10 scrollbar-hide relative will-change-scroll w-full"
@@ -630,7 +633,6 @@ export default function Home() {
         <div className="h-4" />
       </div>
 
-      {/* FULLSCREEN IMAGE MODAL */}
       <AnimatePresence>
         {expandedImage && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 p-4 will-change-transform" onClick={() => setExpandedImage(null)}>
@@ -641,7 +643,6 @@ export default function Home() {
         )}
       </AnimatePresence>
 
-      {/* 3D PEEKING CAT (SHRUNK TO 25% SMALLER) */}
       <div className="absolute bottom-[72px] left-4 z-10 pointer-events-none flex flex-col items-center">
         <AnimatePresence>
           {isPeerActive && (
@@ -667,7 +668,6 @@ export default function Home() {
                 </motion.div>
               )}
 
-              {/* Shrunk Cat Container */}
               <div className="relative w-12 h-10 overflow-visible">
                 <div className="absolute -left-0.5 bottom-0 w-[14px] h-[10px] bg-gradient-to-b from-[#ffb74d] to-[#f57c00] rounded-[8px] shadow-sm transform -rotate-[15deg] z-20"></div>
                 <div className="absolute -right-0.5 bottom-0 w-[14px] h-[10px] bg-gradient-to-b from-[#ffb74d] to-[#f57c00] rounded-[8px] shadow-sm transform rotate-[15deg] z-20"></div>
@@ -678,14 +678,12 @@ export default function Home() {
         </AnimatePresence>
       </div>
 
-      {/* EMOJI PICKER */}
       {showEmojis && (
         <div className={`absolute bottom-[85px] left-2 sm:left-4 z-50 shadow-xl opacity-100 rounded-3xl overflow-hidden ${isDarkMode ? "bg-[#18181b] border border-[#27272a]" : "bg-white"}`}>
           <EmojiPicker onEmojiClick={(emoji) => setInput(p => p + emoji.emoji)} theme={isDarkMode ? "dark" : "light"} width={280} height={320} previewConfig={{ showPreview: false }} />
         </div>
       )}
 
-      {/* INPUT BAR */}
       <div 
         className={`w-full p-3 z-20 shrink-0 border-t transition-colors duration-300 ${isDarkMode ? "bg-[#09090b] border-[#27272a]" : "bg-[#f4f5f9] border-slate-200"}`}
         style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}
