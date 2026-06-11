@@ -13,15 +13,6 @@ const SECRET_KEY = "tour-404-classified-key";
 const CLOUDINARY_CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME; 
 const CLOUDINARY_UPLOAD_PRESET = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET; 
 
-function urlBase64ToUint8Array(base64String) {
-  const padding = "=".repeat((4 - base64String.length % 4) % 4);
-  const base64 = (base64String + padding).replace(/\-/g, "+").replace(/_/g, "/");
-  const rawData = window.atob(base64);
-  const outputArray = new Uint8Array(rawData.length);
-  for (let i = 0; i < rawData.length; ++i) { outputArray[i] = rawData.charCodeAt(i); }
-  return outputArray;
-}
-
 export default function Home() {
   const [appState, setAppState] = useState("DECOY"); 
   const [studentId, setStudentId] = useState("");
@@ -57,24 +48,57 @@ export default function Home() {
   const typingTimeout = useRef(null);
   const lastTypingTime = useRef(0);
 
+  // --- SMART PANIC SWITCH ---
+  const ignorePanicRef = useRef(false);
+
   // --- MOBILE VIEWPORT FIX FOR KEYBOARD ---
   const [viewportHeight, setViewportHeight] = useState("100dvh");
 
+  // --- RESTORED ORIGINAL EXPO TOKEN LISTENER ---
   const registerServiceWorkerAndSubscribe = async (user) => {
-    if ("serviceWorker" in navigator && "PushManager" in window) {
+    const getExpoToken = () => {
+      return new Promise((resolve) => {
+        // 1. Check local storage first
+        const localToken = typeof window !== 'undefined' ? localStorage.getItem('EXPO_PUSH_TOKEN') : null;
+        if (localToken || window.EXPO_PUSH_TOKEN) {
+          resolve(localToken || window.EXPO_PUSH_TOKEN);
+          return;
+        }
+
+        // 2. Fallback Polling (Wait up to 3 seconds for WebView to inject)
+        let attempts = 0;
+        const interval = setInterval(() => {
+          const polledToken = typeof window !== 'undefined' ? localStorage.getItem('EXPO_PUSH_TOKEN') : null;
+          const currentToken = polledToken || window.EXPO_PUSH_TOKEN;
+          
+          if (currentToken) {
+            clearInterval(interval);
+            resolve(currentToken);
+          }
+          attempts++;
+          if (attempts > 6) { 
+            clearInterval(interval);
+            resolve(null);
+          }
+        }, 500);
+      });
+    };
+
+    const expoToken = await getExpoToken();
+
+    if (expoToken) {
       try {
-        const registration = await navigator.serviceWorker.register("/sw.js");
-        await navigator.serviceWorker.ready;
-        const subscription = await registration.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey: urlBase64ToUint8Array(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY),
-        });
         await fetch("/api/subscribe", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ subscription, username: user.name }),
+          body: JSON.stringify({ subscription: expoToken, username: user.name }), 
         });
-      } catch (err) { console.error("SW failed:", err); }
+        console.log("Native Expo Push Token saved permanently to Database!");
+      } catch (err) {
+        console.error("Token save failed:", err);
+      }
+    } else {
+      console.log("No Expo Push Token found. Are you running inside the Native Wrapper?");
     }
   };
 
@@ -95,20 +119,32 @@ export default function Home() {
     clearTimeout(typingTimeout.current);
   };
 
-  // PANIC BUTTON COMMENTED FOR EASY TESTING IN 2 TABS
-  
+  // --- PANIC BUTTON WITH CAMERA BYPASS ---
   useEffect(() => {
     const handlePanicHide = () => {
-      if (document.visibilityState === "hidden") {
+      if (ignorePanicRef.current) return; // Bypass if camera is open
+      if (document.hidden || !document.hasFocus()) {
         handleLogout();
       }
     };
     document.addEventListener("visibilitychange", handlePanicHide);
+    window.addEventListener("blur", handlePanicHide);
     return () => {
       document.removeEventListener("visibilitychange", handlePanicHide);
+      window.removeEventListener("blur", handlePanicHide);
     };
   }, []);
-  
+
+  // Window Focus Reset for Panic Bypass
+  useEffect(() => {
+    const handleWindowFocus = () => {
+      if (ignorePanicRef.current) {
+        setTimeout(() => { ignorePanicRef.current = false; }, 800);
+      }
+    };
+    window.addEventListener("focus", handleWindowFocus);
+    return () => window.removeEventListener("focus", handleWindowFocus);
+  }, []);
 
   // --- 15 SEC DISAPPEAR & CLOUDINARY NUKE PROTOCOL ---
   useEffect(() => {
@@ -222,8 +258,16 @@ export default function Home() {
           }
         } catch (e) { console.log(e); }
         setAppState("CHAT");
-        try { if (typeof Notification !== "undefined" && Notification.permission !== "granted") await Notification.requestPermission(); } 
-        catch (e) {}
+        
+        // Wrapped in try/catch to keep execution unblocked on Native Android WebView
+        try {
+          if (typeof Notification !== "undefined" && Notification.permission !== "granted") {
+            await Notification.requestPermission();
+          }
+        } catch (e) {
+          console.log("Web notification request bypassed for Native push flow.");
+        }
+        
         await registerServiceWorkerAndSubscribe(data.user);
       } else { setError("Invalid University ID or PIN."); }
     } catch (err) { setError("Network error."); } finally { setIsLoggingIn(false); }
@@ -313,7 +357,6 @@ export default function Home() {
     };
   }, [appState, currentUser, activeChannel]);
 
-  // --- VIEWPORT SCROLL FIX ---
   const scrollToBottom = () => {
     setTimeout(() => {
       if (chatContainerRef.current) {
@@ -427,17 +470,21 @@ export default function Home() {
     }
   };
 
-  // --- PERFECT PING LOGIC REVERTED ---
+  // --- RESTORED ORIGINAL PING LOGIC ---
   const handlePingPartner = async () => {
     setIsPinging(true);
     try {
-      await fetch("/api/ping", { 
-        method: "POST", 
-        headers: { "Content-Type": "application/json" }, 
-        body: JSON.stringify({ sender: currentUser.name }) // Reverted back to just Sender!
+      await fetch("/api/ping", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        // Exact original payload
+        body: JSON.stringify({ sender: currentUser.name }), 
       });
       setTimeout(() => setIsPinging(false), 3000);
-    } catch (error) { setIsPinging(false); }
+    } catch (error) {
+      console.error("Ping trigger failed:", error);
+      setIsPinging(false);
+    }
   };
 
   const downloadImage = async (url) => {
@@ -490,15 +537,13 @@ export default function Home() {
   );
 
   return (
-    // THE MAGIC WRAPPER: Dynamic viewportHeight so the keyboard NEVER pushes the header out!
     <div 
-      className="fixed top-0 left-0 w-full font-sans text-slate-800 flex flex-col overflow-hidden"
-      style={{ height: viewportHeight, backgroundColor: '#f4f5f9' }}
+      className="font-sans text-slate-800 flex flex-col overflow-hidden"
+      style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: viewportHeight, backgroundColor: '#f4f5f9' }}
     >
       <input type="file" accept="image/*" capture="camera" ref={cameraInputRef} className="hidden" onChange={handleImageUpload} />
       <input type="file" accept="image/*" ref={galleryInputRef} className="hidden" onChange={handleImageUpload} />
 
-      {/* HEADER: shrink-0 keeps it perfectly pinned */}
       <div className="bg-white border-b border-slate-100 px-4 py-3 flex justify-between items-center z-20 shadow-sm shrink-0">
         <div className="flex items-center gap-3">
           <div className="w-11 h-11 rounded-full bg-slate-100 border-2 border-white flex items-center justify-center relative shadow-sm overflow-hidden">
@@ -520,10 +565,9 @@ export default function Home() {
         </div>
       </div>
 
-      {/* CHAT MESSAGES AREA: flex-1 takes exact remaining space */}
       <div 
         ref={chatContainerRef}
-        className="flex-1 overflow-y-auto p-4 space-y-4 z-10 scrollbar-hide relative will-change-scroll"
+        className="flex-1 overflow-y-auto p-4 space-y-4 z-10 scrollbar-hide relative will-change-scroll w-full"
         style={{
           backgroundImage: `url("data:image/svg+xml,%3Csvg width='180' height='180' viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23d0d5df' fill-opacity='0.4' font-family='sans-serif'%3E%3Ctext x='20' y='30' font-size='16'%3E%F0%9F%98%BA%3C/text%3E%3Ctext x='80' y='80' font-size='12'%3E%E2%99%A1%3C/text%3E%3Ctext x='140' y='40' font-size='14'%3E%E2%98%86%3C/text%3E%3Ctext x='30' y='120' font-size='16'%3E%E2%98%BA%3C/text%3E%3Ctext x='110' y='150' font-size='12'%3E%E2%9C%A8%3C/text%3E%3Ctext x='160' y='110' font-size='14'%3E%E2%99%A1%3C/text%3E%3Ctext x='80' y='10' font-size='10'%3E%E2%98%BA%3C/text%3E%3Ctext x='10' y='80' font-size='10'%3E%E2%9C%A8%3C/text%3E%3C/g%3E%3C/svg%3E")`,
           backgroundSize: "180px 180px"
@@ -564,7 +608,6 @@ export default function Home() {
         <div className="h-4" />
       </div>
 
-      {/* FULLSCREEN IMAGE MODAL */}
       <AnimatePresence>
         {expandedImage && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 p-4 will-change-transform" onClick={() => setExpandedImage(null)}>
@@ -575,7 +618,6 @@ export default function Home() {
         )}
       </AnimatePresence>
 
-      {/* 3D PEEKING CAT */}
       <div className="absolute bottom-[72px] left-4 z-10 pointer-events-none flex flex-col items-center">
         <AnimatePresence>
           {isPeerActive && (
@@ -617,7 +659,6 @@ export default function Home() {
         </div>
       )}
 
-      {/* INPUT BAR: shrink-0 guarantees it stays exact size at the bottom */}
       <div 
         className="w-full bg-[#f4f5f9] p-3 z-20 shrink-0 border-t border-slate-200" 
         style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}
@@ -639,10 +680,10 @@ export default function Home() {
               />
             </form>
             <div className="flex gap-1.5 items-center shrink-0">
-              <button type="button" disabled={isUploading} onClick={(e) => { e.preventDefault(); cameraInputRef.current?.click(); }} className="p-1 text-slate-400 hover:text-slate-600 disabled:opacity-50 transition-colors">
+              <button type="button" disabled={isUploading} onClick={(e) => { e.preventDefault(); ignorePanicRef.current = true; cameraInputRef.current?.click(); }} className="p-1 text-slate-400 hover:text-slate-600 disabled:opacity-50 transition-colors">
                 <Camera size={22} strokeWidth={1.5} />
               </button>
-              <button type="button" disabled={isUploading} onClick={(e) => { e.preventDefault(); galleryInputRef.current?.click(); }} className="p-1 text-slate-400 hover:text-slate-600 disabled:opacity-50 transition-colors">
+              <button type="button" disabled={isUploading} onClick={(e) => { e.preventDefault(); ignorePanicRef.current = true; galleryInputRef.current?.click(); }} className="p-1 text-slate-400 hover:text-slate-600 disabled:opacity-50 transition-colors">
                 <ImageIcon size={22} strokeWidth={1.5} />
               </button>
             </div>
